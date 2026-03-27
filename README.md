@@ -13,9 +13,17 @@ npm run dev
 python -m http.server 8000
 ```
 
-### Deployment
+### GitHub Pages Deployment
+1. Go to your repository: https://github.com/Numzn/Izatime
+2. Click **Settings** → **Pages**
+3. Under **Source**, select **Deploy from a branch**
+4. Select **master** branch and **/(root)** folder
+5. Click **Save**
+6. Your PWA will be live at: `https://numzn.github.io/Izatime/`
+
+### Netlify Deployment (Alternative)
 - **Netlify**: Drag the entire folder to [netlify.com/drop](https://netlify.com/drop)
-- **GitHub Pages**: Upload to a GitHub repo and enable Pages in settings
+- **URL**: Get instant HTTPS URL + deployment
 
 ---
 
