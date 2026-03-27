@@ -7,12 +7,14 @@ const STORAGE_KEYS = {
   view: 'iza-time-current-view',
   day: 'iza-time-active-day',
   complete: 'iza-time-completed',
+  overrides: 'iza-time-subject-overrides',
 };
 
 // DOM references
 let btnSchool, btnStudy, btnToday, btnReset, dayScheduleDiv, dayChips, activeViewSpan, currentDTSpan;
 
 let completedSubjects = {}; // { school: { MON: [0,2], ... }, study: {...} }
+let subjectOverrides = {}; // { 'school:MON:1': 'Custom Name' }
 
 // Initialize DOM references
 export function initDOM() {
@@ -105,6 +107,7 @@ function persistState() {
     localStorage.setItem(STORAGE_KEYS.view, currentView);
     localStorage.setItem(STORAGE_KEYS.day, String(activeDayIndex));
     localStorage.setItem(STORAGE_KEYS.complete, JSON.stringify(completedSubjects));
+    localStorage.setItem(STORAGE_KEYS.overrides, JSON.stringify(subjectOverrides));
   } catch (error) {
     console.warn('Could not persist state:', error);
   }
@@ -125,9 +128,79 @@ function loadCompletedState() {
   }
 }
 
+function loadOverrides() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.overrides);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        subjectOverrides = parsed;
+      }
+    }
+  } catch (error) {
+    console.warn('Could not load subject overrides:', error);
+    subjectOverrides = {};
+  }
+}
+
+function setOverride(key, value) {
+  if (!value || value.trim() === '') {
+    delete subjectOverrides[key];
+  } else {
+    subjectOverrides[key] = value.trim();
+  }
+  persistState();
+}
+
+function getOverride(key) {
+  return subjectOverrides[key] || null;
+}
+
+function openEditInput(row, index) {
+  const code = row.querySelector('.subject-code')?.textContent?.trim() || '';
+  const day = days[activeDayIndex];
+  const key = `${currentView}:${day}:${index}`;
+  const original = getOverride(key) || subjectFull[code] || code;
+  const nameSpan = row.querySelector('.subject-name');
+
+  if (!nameSpan || row.querySelector('.subject-edit-input')) return;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'subject-edit-input';
+  input.value = original;
+
+  nameSpan.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const value = input.value.trim();
+    if (value === '') {
+      setOverride(key, null);
+    } else {
+      setOverride(key, value);
+    }
+    renderTimetable();
+  };
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      commit();
+    } else if (event.key === 'Escape') {
+      renderTimetable();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    commit();
+  });
+}
+
 export function initDayChips() {
   loadPersistedState();
   loadCompletedState();
+  loadOverrides();
   const todayKey = getTodayKey();
   const todayIdx = days.indexOf(todayKey);
 
@@ -163,7 +236,8 @@ export function renderTimetable() {
 
     const html = subjects.map((code, index) => {
       const c = code.trim();
-      const subjectName = subjectFull[c] || c;
+      const overrideKey = `${currentView}:${days[activeDayIndex]}:${index}`;
+      const subjectName = getOverride(overrideKey) || subjectFull[c] || c;
       const icon = iconMap[c] || iconMap.default;
       const isComplete = completedForDay.includes(index);
 
@@ -178,21 +252,52 @@ export function renderTimetable() {
 
     // Set up click-to-toggle complete after render
     dayScheduleDiv.querySelectorAll('.subject-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const idx = Number(row.getAttribute('data-subject-index'));
-        if (!Number.isFinite(idx)) return;
+      const idx = Number(row.getAttribute('data-subject-index'));
+      const day = days[activeDayIndex];
+      const longPressState = { timer: null, active: false };
 
-        const day = days[activeDayIndex];
+      function startLongPress(event) {
+        if (longPressState.timer) clearTimeout(longPressState.timer);
+        longPressState.active = false;
+        longPressState.timer = setTimeout(() => {
+          longPressState.active = true;
+          openEditInput(row, idx);
+        }, 500);
+      }
+
+      function cancelLongPress() {
+        if (longPressState.timer) {
+          clearTimeout(longPressState.timer);
+          longPressState.timer = null;
+        }
+      }
+
+      row.addEventListener('mousedown', startLongPress);
+      row.addEventListener('touchstart', startLongPress);
+      row.addEventListener('mouseup', cancelLongPress);
+      row.addEventListener('mouseleave', cancelLongPress);
+      row.addEventListener('touchend', cancelLongPress);
+      row.addEventListener('touchcancel', cancelLongPress);
+
+      row.addEventListener('click', () => {
+        if (longPressState.active) {
+          longPressState.active = false;
+          return;
+        }
+
+        const idxClick = Number(row.getAttribute('data-subject-index'));
+        if (!Number.isFinite(idxClick)) return;
+
         completedSubjects[currentView] = completedSubjects[currentView] || {};
         completedSubjects[currentView][day] = completedSubjects[currentView][day] || [];
 
         const currentList = completedSubjects[currentView][day];
-        const pos = currentList.indexOf(idx);
+        const pos = currentList.indexOf(idxClick);
         if (pos >= 0) {
           currentList.splice(pos, 1);
           row.classList.remove('completed');
         } else {
-          currentList.push(idx);
+          currentList.push(idxClick);
           row.classList.add('completed');
         }
 

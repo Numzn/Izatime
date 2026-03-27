@@ -309,6 +309,16 @@ body.banner-visible {
   background: #bbe6b3;
 }
 
+.subject-edit-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-family: var(--font);
+  font-size: 14px;
+  color: #1d1d1d;
+}
+
 .subject-row:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(0,0,0,0.08);
