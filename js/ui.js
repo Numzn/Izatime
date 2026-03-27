@@ -21,8 +21,10 @@ export function initDOM() {
   try {
     btnSchool = document.getElementById('btnSchool');
     btnStudy = document.getElementById('btnStudy');
-  btnToday = document.getElementById('btnToday');
-  btnReset = document.getElementById('btnReset');
+    btnToday = document.getElementById('btnToday');
+    btnReset = document.getElementById('btnReset');
+    dayScheduleDiv = document.getElementById('daySchedule');
+    dayChips = document.querySelectorAll('.day-chip');
     activeViewSpan = document.getElementById('activeViewLabel');
     currentDTSpan = document.getElementById('currentDateTime');
 
