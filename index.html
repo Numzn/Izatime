@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1d1d1d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Iza:time">
+  <meta name="description" content="Iza's personal school & study timetable">
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Apple touch icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+
+  <title>pulse · Iza timetable</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Splash (shown briefly on launch, like a native app) -->
+<div id="splash">
+  <div class="splash-icon">⏳</div>
+  <div class="splash-title">Iza:time</div>
+  <div class="splash-sub">pulse timetable</div>
+</div>
+
+<!-- Install Banner -->
+<div id="installBanner">
+  <div class="install-left">
+    <div class="install-icon">⏳</div>
+    <div class="install-text">
+      <div class="install-title">Install Iza:time</div>
+      <div class="install-sub">Add to home screen · works offline</div>
+    </div>
+  </div>
+  <div class="install-actions">
+    <button class="btn-install" id="btnInstall">Install</button>
+    <button class="btn-dismiss" id="btnDismiss">✕</button>
+  </div>
+</div>
+
+<!-- Offline Ribbon -->
+<div id="offlineRibbon">⚡ offline mode</div>
+
+<!-- App Card -->
+<div class="timetable-app" id="timetableApp">
+  <div class="header-section">
+    <div class="app-title">
+      <span class="hourglass">⏳</span>
+      <h1>Iza:time</h1>
+    </div>
+
+    <div class="view-toggle">
+      <button class="toggle-btn active" id="btnSchool">🏫 school</button>
+      <button class="toggle-btn" id="btnStudy">✏️ study</button>
+    </div>
+
+    <div class="day-indicator" id="dayIndicator">
+      <button class="day-chip" data-day="MON">MON</button>
+      <button class="day-chip" data-day="TUE">TUE</button>
+      <button class="day-chip" data-day="WED">WED</button>
+      <button class="day-chip" data-day="THUR">THUR</button>
+      <button class="day-chip" data-day="FRI">FRI</button>
+      <button class="day-chip" data-day="SAT">SAT</button>
+    </div>
+  </div>
+
+  <div class="timetable-grid" id="timetableContent">
+    <div class="day-schedule" id="daySchedule"></div>
+  </div>
+
+  <div class="footer-note">
+    <div class="live-indicator">
+      <span class="dot"></span>
+      <span id="currentDateTime"></span>
+    </div>
+    <span class="view-badge" id="activeViewLabel">school</span>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+
+<!-- Fallback for browsers that don't support ES6 modules -->
+<script nomodule>
+  document.body.innerHTML = `
+    <div style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-family: 'Sora', sans-serif;
+      color: #666;
+    ">
+      <h2>⚠️ Browser Not Supported</h2>
+      <p>This app requires a modern browser with ES6 module support.</p>
+      <p>Please update your browser or use a recent version of Chrome, Firefox, Safari, or Edge.</p>
+    </div>
+  `;
+</script>
+
+
+</body>
+</html>

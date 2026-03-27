@@ -1,0 +1,30 @@
+{
+  "name": "iza-time-pwa",
+  "version": "1.1.0",
+  "description": "Iza's personal school & study timetable PWA",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build step required - static files only'",
+    "lint": "echo 'No linting configured'",
+    "test": "echo 'No tests configured'"
+  },
+  "keywords": ["pwa", "timetable", "school", "study"],
+  "author": "Iza",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/iza-time-netlify"
+  },
+  "homepage": "https://username.github.io/iza-time-netlify",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "> 1%",
+    "not dead"
+  ]
+}
