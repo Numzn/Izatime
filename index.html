@@ -2,117 +2,1000 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1d1d1d">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Iza:time">
-  <meta name="description" content="Iza's personal school & study timetable">
-
-  <!-- PWA manifest -->
+  <meta name="description" content="Iza:time smart study suite">
   <link rel="manifest" href="manifest.json">
-
-  <!-- Apple touch icons -->
-  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
-
-  <title>pulse · Iza timetable</title>
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
   <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <title>Iza:time | Smart Study Suite</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  <link rel="stylesheet" href="css/styles.css">
+    body {
+      background: radial-gradient(1200px 700px at 20% -10%, #1a1835 0%, #0a0a0f 45%), #0a0a0f;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: #ededee;
+      padding-bottom: 20px;
+      min-height: 100vh;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0f;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 1000;
+      transition: opacity 0.6s ease;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .splash-sub {
+      font-size: 1rem;
+      opacity: 0.82;
+      font-weight: 500;
+    }
+
+    #splash.gone {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .header {
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(10,10,15,0.76);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 99;
+    }
+
+    .header h2 {
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #fff, #9ac8ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .sub {
+      font-size: 0.74rem;
+      color: #8e8e9e;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .toggle {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+      background: #1c1c24;
+      padding: 4px;
+      border-radius: 48px;
+    }
+
+    .tog-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 40px;
+      background: transparent;
+      color: #aaa;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tog-btn.active {
+      background: white;
+      color: #0a0a0f;
+    }
+
+    .days {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 16px 20px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .days::-webkit-scrollbar {
+      display: none;
+    }
+
+    .day-chip {
+      padding: 8px 18px;
+      border-radius: 40px;
+      background: #18181e;
+      border: 1px solid transparent;
+      color: #bcbcd0;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .day-chip.active {
+      background: white;
+      color: black;
+    }
+
+    .main-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 12px 16px 30px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .schedule-section {
+      background: rgba(20,20,28,0.65);
+      border-radius: 32px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+
+    .add-btn {
+      background: #2c2c38;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 40px;
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .s-row {
+      background: #1e1e26;
+      margin-bottom: 10px;
+      padding: 14px 16px;
+      border-radius: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: 0.1s;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .class-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .class-name {
+      font-weight: 600;
+      font-size: 1rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .class-time {
+      font-size: 0.72rem;
+      color: #aaa;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-left: 12px;
+    }
+
+    .complete-check {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      accent-color: #4da3ff;
+    }
+
+    .edit-icon,
+    .delete-icon {
+      cursor: pointer;
+      font-size: 1.1rem;
+      opacity: 0.7;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .smart-panel {
+      background: linear-gradient(145deg, #15151e, #0e0e14);
+      border-radius: 32px;
+      padding: 20px;
+      border: 1px solid rgba(77,163,255,0.36);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .panel-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .ai-tip {
+      background: #20202a;
+      padding: 14px;
+      border-radius: 24px;
+      margin-bottom: 20px;
+      font-size: 0.92rem;
+      border-left: 4px solid #4da3ff;
+      line-height: 1.45;
+    }
+
+    .pomodoro {
+      background: #1a1a24;
+      border-radius: 28px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .timer {
+      font-size: 2.8rem;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 4px;
+      margin: 10px 0;
+    }
+
+    .timer-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .timer-btn {
+      background: #2d2d3a;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 40px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: #13131c;
+      border-radius: 20px;
+      padding: 12px;
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stat-number {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #9ac8ff;
+    }
+
+    .focus-mode {
+      margin-top: 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .focus-btn {
+      background: #4da3ff;
+      color: #06111f;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      visibility: hidden;
+      opacity: 0;
+      transition: 0.2s;
+      padding: 16px;
+    }
+
+    .modal.active {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .modal-card {
+      background: #1f1f2a;
+      width: 100%;
+      max-width: 340px;
+      border-radius: 36px;
+      padding: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .modal-card input {
+      width: 100%;
+      background: #2c2c36;
+      border: none;
+      padding: 12px;
+      border-radius: 28px;
+      color: white;
+      margin: 12px 0;
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-save,
+    .btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border-radius: 40px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save {
+      background: white;
+      color: black;
+    }
+
+    .btn-cancel {
+      background: #333;
+      color: white;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2e2e3c;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      opacity: 0;
+      transition: 0.2s;
+      pointer-events: none;
+      z-index: 1000;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.72rem;
+      color: #6d6d82;
+      margin-top: 20px;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    #offlineRibbon {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ff9f4a;
+      color: #111;
+      padding: 5px 16px;
+      border-radius: 40px;
+      font-size: 0.72rem;
+      display: none;
+      z-index: 99;
+      font-weight: 700;
+    }
+
+    #offlineRibbon.show {
+      display: block;
+    }
+
+    body.focus {
+      filter: grayscale(0.15) brightness(0.72);
+    }
+
+    @media (min-width: 900px) {
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<!-- Splash (shown briefly on launch, like a native app) -->
-<div id="splash">
-  <div class="splash-icon">⏳</div>
-  <div class="splash-title">Iza:time</div>
-  <div class="splash-sub">pulse timetable</div>
-</div>
+<div id="splash">🧠 Iza:time <span class="splash-sub">AI Study Suite</span></div>
 
-<!-- Install Banner -->
-<div id="installBanner">
-  <div class="install-left">
-    <div class="install-icon">⏳</div>
-    <div class="install-text">
-      <div class="install-title">Install Iza:time</div>
-      <div class="install-sub">Add to home screen · works offline</div>
-    </div>
-  </div>
-  <div class="install-actions">
-    <button class="btn-install" id="btnInstall">Install</button>
-    <button class="btn-dismiss" id="btnDismiss">✕</button>
+<div class="header">
+  <h2>Iza:time</h2>
+  <div class="sub">smart scheduling · adaptive learning</div>
+  <div class="toggle">
+    <button class="tog-btn active" id="btnSchool">🏫 School</button>
+    <button class="tog-btn" id="btnStudy">📘 Study Plan</button>
   </div>
 </div>
 
-<!-- Offline Ribbon -->
-<div id="offlineRibbon">⚡ offline mode</div>
+<div class="days" id="days"></div>
 
-<!-- App Card -->
-<div class="timetable-app" id="timetableApp">
-  <div class="header-section">
-    <div class="app-title">
-      <span class="hourglass">⏳</span>
-      <h1>Iza:time</h1>
+<div class="main-grid">
+  <div class="schedule-section">
+    <div class="schedule-header">
+      <h3 id="dayTitle">Schedule</h3>
+      <button class="add-btn" id="quickAddBtn">+ Add session</button>
     </div>
-
-    <div class="view-toggle">
-      <button class="toggle-btn active" id="btnSchool">🏫 school</button>
-      <button class="toggle-btn" id="btnStudy">✏️ study</button>
-    </div>
-
-    <div class="day-actions">
-      <button class="btn-action" id="btnToday">Today</button>
-      <button class="btn-action" id="btnReset">Reset</button>
-    </div>
-
-    <div class="day-indicator" id="dayIndicator">
-      <button class="day-chip" data-day="MON">MON</button>
-      <button class="day-chip" data-day="TUE">TUE</button>
-      <button class="day-chip" data-day="WED">WED</button>
-      <button class="day-chip" data-day="THUR">THUR</button>
-      <button class="day-chip" data-day="FRI">FRI</button>
-      <button class="day-chip" data-day="SAT">SAT</button>
-    </div>
+    <div id="schedule"></div>
   </div>
 
-  <div class="timetable-grid" id="timetableContent">
-    <div class="day-schedule" id="daySchedule"></div>
-  </div>
-
-  <div class="footer-note">
-    <div class="live-indicator">
-      <span class="dot"></span>
-      <span id="currentDateTime"></span>
+  <div class="smart-panel">
+    <div class="panel-title">✨ Smart Study Hub</div>
+    <div class="ai-tip" id="aiTip">💡 AI tip: Based on your schedule, try active recall after each class.</div>
+    <div class="pomodoro">
+      <div>🍅 Pomodoro Focus</div>
+      <div class="timer" id="timerDisplay">25:00</div>
+      <div class="timer-buttons">
+        <button class="timer-btn" id="startTimer">Start</button>
+        <button class="timer-btn" id="pauseTimer">Pause</button>
+        <button class="timer-btn" id="resetTimer">Reset</button>
+      </div>
     </div>
-    <span class="view-badge" id="activeViewLabel">school</span>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-number" id="streakCount">0</div><div>🔥 Study Streak</div></div>
+      <div class="stat-card"><div class="stat-number" id="totalDone">0</div><div>✅ Tasks done</div></div>
+      <div class="stat-card"><div class="stat-number" id="bestDay">-</div><div>Best day</div></div>
+    </div>
+    <div class="focus-mode">
+      <button class="focus-btn" id="focusModeBtn">🌙 Focus Mode (Dim UI)</button>
+    </div>
   </div>
 </div>
 
-<script type="module" src="js/app.js"></script>
+<div id="offlineRibbon">📡 Offline · data saved</div>
+<div id="toast"></div>
+<div class="footer">Iza:time · local-first study flow</div>
 
-<!-- Fallback for browsers that don't support ES6 modules -->
-<script nomodule>
-  document.body.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      font-family: 'Sora', sans-serif;
-      color: #666;
-    ">
-      <h2>⚠️ Browser Not Supported</h2>
-      <p>This app requires a modern browser with ES6 module support.</p>
-      <p>Please update your browser or use a recent version of Chrome, Firefox, Safari, or Edge.</p>
+<div id="classModal" class="modal">
+  <div class="modal-card">
+    <h4 id="modalTitle">Add Session</h4>
+    <input type="text" id="classNameInput" placeholder="Subject / Task">
+    <input type="text" id="classTimeInput" placeholder="Time (e.g., 10:30 AM)">
+    <div class="modal-actions">
+      <button class="btn-save" id="modalSaveBtn">Save</button>
+      <button class="btn-cancel" id="modalCancelBtn">Cancel</button>
     </div>
-  `;
+  </div>
+</div>
+
+<script>
+  let timetableData = { SCHOOL: {}, STUDY: {} };
+  let currentMode = "SCHOOL";
+  let currentDay = "MON";
+  let editIndex = null;
+
+  let timerInterval = null;
+  let timerSeconds = 25 * 60;
+  let isRunning = false;
+
+  let studyStats = {
+    streak: 0,
+    lastCompletedDate: null,
+    totalCompletions: 0,
+    dayCompletions: { MON:0, TUE:0, WED:0, THU:0, FRI:0, SAT:0, SUN:0 }
+  };
+
+  const DAYS = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+  const DAY_MAP = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+
+  function loadData() {
+    const stored = localStorage.getItem("iza_smart_data");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        timetableData = parsed.timetable || { SCHOOL: {}, STUDY: {} };
+        studyStats = parsed.stats || studyStats;
+      } catch (error) {
+        console.error("Failed to parse saved data", error);
+      }
+    }
+
+    for (const mode of ["SCHOOL", "STUDY"]) {
+      for (const day of DAYS) {
+        if (!timetableData[mode][day]) {
+          timetableData[mode][day] = [];
+        }
+      }
+    }
+
+    if (!stored) {
+      timetableData.SCHOOL.MON = [
+        { name: "Mathematics", time: "08:30 AM", completed: false },
+        { name: "Physics", time: "10:15 AM", completed: false }
+      ];
+      timetableData.SCHOOL.TUE = [
+        { name: "Literature", time: "09:00 AM", completed: false }
+      ];
+      timetableData.STUDY.MON = [
+        { name: "LeetCode", time: "05:00 PM", completed: false },
+        { name: "Read AI paper", time: "07:30 PM", completed: false }
+      ];
+      timetableData.STUDY.TUE = [
+        { name: "System Design", time: "06:00 PM", completed: false }
+      ];
+      timetableData.STUDY.WED = [
+        { name: "Neural Networks", time: "04:00 PM", completed: false }
+      ];
+      studyStats = {
+        streak: 0,
+        lastCompletedDate: null,
+        totalCompletions: 0,
+        dayCompletions: { MON:0, TUE:0, WED:0, THU:0, FRI:0, SAT:0, SUN:0 }
+      };
+      saveAll();
+    }
+
+    updateStatsUI();
+  }
+
+  function saveAll() {
+    localStorage.setItem("iza_smart_data", JSON.stringify({
+      timetable: timetableData,
+      stats: studyStats
+    }));
+  }
+
+  function getCurrentArray() {
+    return timetableData[currentMode][currentDay];
+  }
+
+  function setCurrentArray(arr) {
+    timetableData[currentMode][currentDay] = arr;
+    saveAll();
+  }
+
+  function renderDays() {
+    const daysWrap = document.getElementById("days");
+    daysWrap.innerHTML = "";
+    for (const day of DAYS) {
+      const btn = document.createElement("button");
+      btn.className = "day-chip" + (day === currentDay ? " active" : "");
+      btn.textContent = day;
+      btn.addEventListener("click", () => {
+        currentDay = day;
+        renderDays();
+        renderSchedule();
+        generateSmartTip();
+      });
+      daysWrap.appendChild(btn);
+    }
+  }
+
+  function renderSchedule() {
+    const container = document.getElementById("schedule");
+    const items = getCurrentArray();
+    const title = document.getElementById("dayTitle");
+    title.innerText = (currentMode === "SCHOOL" ? "🏫 Classes" : "📖 Study") + " · " + currentDay;
+
+    if (!items.length) {
+      container.innerHTML = "<div style=\"text-align:center; padding:30px; color:#bcbcd0;\">✨ Add your first session</div>";
+      return;
+    }
+
+    container.innerHTML = "";
+    items.forEach((item, idx) => {
+      const row = document.createElement("div");
+      row.className = "s-row";
+      row.style.opacity = item.completed ? "0.68" : "1";
+      row.innerHTML =
+        "<div class=\"class-info\">" +
+          "<div class=\"class-name\">" + escapeHtml(item.name) + "</div>" +
+          "<div class=\"class-time\">🕒 " + escapeHtml(item.time) + "</div>" +
+        "</div>" +
+        "<div class=\"row-actions\">" +
+          "<input type=\"checkbox\" class=\"complete-check\" data-idx=\"" + idx + "\" " + (item.completed ? "checked" : "") + ">" +
+          "<span class=\"edit-icon\" data-idx=\"" + idx + "\">✏️</span>" +
+          "<span class=\"delete-icon\" data-idx=\"" + idx + "\">🗑️</span>" +
+        "</div>";
+      container.appendChild(row);
+    });
+
+    document.querySelectorAll(".complete-check").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const idx = parseInt(cb.dataset.idx, 10);
+        toggleComplete(idx, cb.checked);
+      });
+    });
+
+    document.querySelectorAll(".edit-icon").forEach((icon) => {
+      icon.addEventListener("click", () => {
+        const idx = parseInt(icon.dataset.idx, 10);
+        openEditModal(idx);
+      });
+    });
+
+    document.querySelectorAll(".delete-icon").forEach((icon) => {
+      icon.addEventListener("click", () => {
+        const idx = parseInt(icon.dataset.idx, 10);
+        deleteClass(idx);
+      });
+    });
+  }
+
+  function toggleComplete(idx, isChecked) {
+    const arr = getCurrentArray();
+    if (!arr[idx]) {
+      return;
+    }
+    arr[idx].completed = isChecked;
+    setCurrentArray(arr);
+
+    if (isChecked) {
+      studyStats.totalCompletions += 1;
+      studyStats.dayCompletions[currentDay] = (studyStats.dayCompletions[currentDay] || 0) + 1;
+      updateStreak();
+    } else {
+      studyStats.totalCompletions = Math.max(0, studyStats.totalCompletions - 1);
+      studyStats.dayCompletions[currentDay] = Math.max(0, (studyStats.dayCompletions[currentDay] || 0) - 1);
+    }
+
+    saveAll();
+    updateStatsUI();
+    renderSchedule();
+    generateSmartTip();
+  }
+
+  function updateStreak() {
+    const now = new Date();
+    const todayStr = DAY_MAP[now.getDay()];
+    const todayHasCompletion = studyStats.dayCompletions[todayStr] > 0;
+    const lastDate = studyStats.lastCompletedDate ? new Date(studyStats.lastCompletedDate) : null;
+    const todayDateStr = now.toDateString();
+
+    if (todayHasCompletion) {
+      if (!lastDate || lastDate.toDateString() !== todayDateStr) {
+        if (lastDate) {
+          const yesterday = new Date(now);
+          yesterday.setDate(now.getDate() - 1);
+          if (lastDate.toDateString() === yesterday.toDateString()) {
+            studyStats.streak += 1;
+          } else if (lastDate.toDateString() !== todayDateStr) {
+            studyStats.streak = 1;
+          }
+        } else {
+          studyStats.streak = 1;
+        }
+        studyStats.lastCompletedDate = now.toISOString();
+      }
+    } else if (lastDate) {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (lastDate.toDateString() !== todayDateStr && lastDate.toDateString() !== yesterday.toDateString()) {
+        studyStats.streak = 0;
+      }
+    }
+    saveAll();
+  }
+
+  function updateStatsUI() {
+    document.getElementById("streakCount").innerText = String(studyStats.streak || 0);
+    document.getElementById("totalDone").innerText = String(studyStats.totalCompletions || 0);
+
+    let best = "MON";
+    let max = 0;
+    for (const day of DAYS) {
+      if ((studyStats.dayCompletions[day] || 0) > max) {
+        max = studyStats.dayCompletions[day];
+        best = day;
+      }
+    }
+    document.getElementById("bestDay").innerText = max > 0 ? best : "-";
+  }
+
+  function deleteClass(idx) {
+    const arr = getCurrentArray();
+    if (!arr[idx]) {
+      return;
+    }
+
+    if (arr[idx].completed) {
+      studyStats.totalCompletions = Math.max(0, studyStats.totalCompletions - 1);
+      studyStats.dayCompletions[currentDay] = Math.max(0, (studyStats.dayCompletions[currentDay] || 0) - 1);
+      saveAll();
+      updateStatsUI();
+    }
+
+    arr.splice(idx, 1);
+    setCurrentArray(arr);
+    renderSchedule();
+    generateSmartTip();
+    showToast("Removed");
+  }
+
+  function openEditModal(idx) {
+    const item = getCurrentArray()[idx];
+    if (!item) {
+      return;
+    }
+    document.getElementById("classNameInput").value = item.name;
+    document.getElementById("classTimeInput").value = item.time;
+    editIndex = idx;
+    document.getElementById("modalTitle").innerText = "Edit Session";
+    document.getElementById("classModal").classList.add("active");
+  }
+
+  function addNewClass() {
+    editIndex = null;
+    document.getElementById("classNameInput").value = "";
+    document.getElementById("classTimeInput").value = "";
+    document.getElementById("modalTitle").innerText = "➕ Add Session";
+    document.getElementById("classModal").classList.add("active");
+  }
+
+  function saveModal() {
+    const name = document.getElementById("classNameInput").value.trim();
+    let time = document.getElementById("classTimeInput").value.trim();
+    if (!name) {
+      showToast("Enter a name");
+      return;
+    }
+    if (!time) {
+      time = "Flexible";
+    }
+
+    const arr = getCurrentArray();
+    if (editIndex !== null) {
+      arr[editIndex] = Object.assign({}, arr[editIndex], { name: name, time: time });
+      showToast("Updated");
+    } else {
+      arr.push({ name: name, time: time, completed: false });
+      showToast("Added");
+    }
+
+    setCurrentArray(arr);
+    renderSchedule();
+    closeModal();
+    generateSmartTip();
+  }
+
+  function closeModal() {
+    document.getElementById("classModal").classList.remove("active");
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>]/g, (m) => {
+      if (m === "&") {
+        return "&amp;";
+      }
+      if (m === "<") {
+        return "&lt;";
+      }
+      if (m === ">") {
+        return "&gt;";
+      }
+      return m;
+    });
+  }
+
+  function generateSmartTip() {
+    const arr = getCurrentArray();
+    const completedToday = arr.filter((item) => item.completed).length;
+    const totalToday = arr.length;
+    const tipBox = document.getElementById("aiTip");
+    let tip = "💡 AI Insight: ";
+
+    if (totalToday > 0 && completedToday === totalToday) {
+      tip += "Great! You completed everything today. Run a short active-recall review tonight.";
+    } else if (totalToday > 0 && completedToday === 0) {
+      tip += "Start with the hardest task first. One focused Pomodoro can create momentum.";
+    } else if (currentMode === "STUDY" && arr.some((entry) => entry.name.toLowerCase().includes("code"))) {
+      tip += "Coding improves with spaced retrieval. Pause after 30 minutes and write a mini quiz.";
+    } else {
+      const tips = [
+        "Use the Feynman technique: explain the topic in simple words.",
+        "A 5 minute walk before study can improve recall.",
+        "Chunk your learning into 25 minute sprints with 5 minute breaks.",
+        "Retrieval practice is stronger than re-reading notes."
+      ];
+      tip += tips[Math.floor(Math.random() * tips.length)];
+    }
+    tipBox.innerText = tip;
+  }
+
+  function updateTimerDisplay() {
+    const mins = Math.floor(timerSeconds / 60);
+    const secs = timerSeconds % 60;
+    document.getElementById("timerDisplay").innerText = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+  }
+
+  function tickTimer() {
+    if (timerSeconds <= 0) {
+      stopTimer();
+      showToast("Pomodoro complete");
+      return;
+    }
+    timerSeconds -= 1;
+    updateTimerDisplay();
+  }
+
+  function startTimer() {
+    if (isRunning) {
+      return;
+    }
+    isRunning = true;
+    timerInterval = setInterval(tickTimer, 1000);
+  }
+
+  function stopTimer() {
+    isRunning = false;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function resetTimer() {
+    stopTimer();
+    timerSeconds = 25 * 60;
+    updateTimerDisplay();
+  }
+
+  function syncCurrentDay() {
+    const today = DAY_MAP[new Date().getDay()];
+    if (DAYS.includes(today)) {
+      currentDay = today;
+    }
+  }
+
+  function updateConnectivityRibbon() {
+    const offlineRibbon = document.getElementById("offlineRibbon");
+    if (navigator.onLine) {
+      offlineRibbon.classList.remove("show");
+    } else {
+      offlineRibbon.classList.add("show");
+    }
+  }
+
+  function initEvents() {
+    document.getElementById("btnSchool").addEventListener("click", () => {
+      currentMode = "SCHOOL";
+      document.getElementById("btnSchool").classList.add("active");
+      document.getElementById("btnStudy").classList.remove("active");
+      renderSchedule();
+      generateSmartTip();
+    });
+
+    document.getElementById("btnStudy").addEventListener("click", () => {
+      currentMode = "STUDY";
+      document.getElementById("btnStudy").classList.add("active");
+      document.getElementById("btnSchool").classList.remove("active");
+      renderSchedule();
+      generateSmartTip();
+    });
+
+    document.getElementById("quickAddBtn").addEventListener("click", addNewClass);
+    document.getElementById("modalSaveBtn").addEventListener("click", saveModal);
+    document.getElementById("modalCancelBtn").addEventListener("click", closeModal);
+
+    document.getElementById("classModal").addEventListener("click", (event) => {
+      if (event.target.id === "classModal") {
+        closeModal();
+      }
+    });
+
+    document.getElementById("classNameInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        saveModal();
+      }
+    });
+
+    document.getElementById("classTimeInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        saveModal();
+      }
+    });
+
+    document.getElementById("startTimer").addEventListener("click", startTimer);
+    document.getElementById("pauseTimer").addEventListener("click", stopTimer);
+    document.getElementById("resetTimer").addEventListener("click", resetTimer);
+
+    document.getElementById("focusModeBtn").addEventListener("click", () => {
+      document.body.classList.toggle("focus");
+      const on = document.body.classList.contains("focus");
+      document.getElementById("focusModeBtn").innerText = on ? "☀️ Exit Focus Mode" : "🌙 Focus Mode (Dim UI)";
+    });
+
+    window.addEventListener("online", updateConnectivityRibbon);
+    window.addEventListener("offline", updateConnectivityRibbon);
+  }
+
+  function initSplash() {
+    setTimeout(() => {
+      document.getElementById("splash").classList.add("gone");
+    }, 1200);
+  }
+
+  function registerServiceWorker() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch((error) => {
+        console.error("Service worker registration failed", error);
+      });
+    }
+  }
+
+  function init() {
+    syncCurrentDay();
+    loadData();
+    renderDays();
+    renderSchedule();
+    generateSmartTip();
+    updateTimerDisplay();
+    initEvents();
+    initSplash();
+    updateConnectivityRibbon();
+    registerServiceWorker();
+  }
+
+  init();
 </script>
-
 
 </body>
 </html>
