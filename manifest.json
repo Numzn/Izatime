@@ -1,12 +1,12 @@
 {
-  "name": "Iza:time · pulse timetable",
+  "name": "Iza:time · AI Study Suite",
   "short_name": "Iza:time",
-  "description": "Iza's personal school & study timetable",
+  "description": "A calm, intelligent study companion: plan sessions, review with spaced repetition, focus with Pomodoro, and track real progress.",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1d1d1d",
-  "theme_color": "#1d1d1d",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0b0b12",
   "categories": ["education", "productivity"],
   "icons": [
     { "src": "icons/icon-72x72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any maskable" },

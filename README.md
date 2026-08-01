@@ -1,6 +1,8 @@
-# Iza:time PWA 📱⏳
+# Iza:time — AI Study Suite 🧠⏳
 
-A Progressive Web App (PWA) timetable for Iza — installable on Android/iOS like a native app.
+A calm, offline-first study companion PWA. Plan subjects and sessions, review
+with spaced repetition, focus with a Pomodoro timer, and see real progress —
+all backed by a heuristic (no external API) study coach.
 
 ---
 
@@ -12,23 +14,28 @@ npm run dev
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000`.
+Open `http://localhost:8000`. No build step — plain ES modules loaded natively.
 
 ---
 
 ## ✅ Features
 
-- **📱 PWA Ready**: Install on mobile devices, standalone display
-- **⚡ Offline Support**: Service worker caches the app shell
-- **🕐 Live Clock / Splash Screen**
-- **📅 Day Tabs**: MON–SUN, current day auto-selected on load
-- **🔄 Dual Views**: School and Study Plan schedules, tracked independently
-- **➕ Session Management**: Add / edit / delete sessions via modal (name + time)
-- **✅ Completion Tracking**: Checkbox per session, feeds streak & stats
-- **🍅 Pomodoro Timer**: 25-minute focus timer (start/pause/reset)
-- **💡 Smart Tips**: Contextual study tips based on today's progress
-- **🌙 Focus Mode**: Dims the UI for distraction-free study
-- **📡 Offline Ribbon**: Shows when the device loses connectivity
+- **🏠 Dashboard** — today's plan, next session, daily goal ring, streak, focus time, and top AI recommendations.
+- **🗓️ Planner** — subjects, topics, one-off or recurring sessions, exams.
+- **🍅 Focus** — configurable Pomodoro (focus/break/long break) with a 7-day focus history.
+- **📚 Learning Hub** — per-subject notes, flashcards with spaced repetition (SM-2), and quizzes generated from your own flashcards.
+- **📈 Progress** — study trend, completion rate, per-subject performance, and weak-area flags.
+- **✨ AI Study Coach** — a rule-based engine (not a hosted LLM — see below) that surfaces neglected subjects, due reviews, upcoming exams, and one contextual tip a day.
+- **🔔 Smart notifications** — capped at 3/day, deduplicated per item, quiet-hours aware. Requires explicit permission from Settings.
+- **⚡ Offline-first** — service worker precaches the full app shell; all data lives in `localStorage` with an automatic rolling backup.
+- **🌗 Theme** — light/dark/system, plus data export/import/reset in Settings.
+
+### About the "AI"
+There's no external API call and no network dependency — the coach is
+heuristic logic over your real data (due dates, completion rates, ease
+factors, streaks). This keeps the app fully offline, free, instant, and
+free of any client-side API-key exposure. It recommends *what* and *when*
+to study; it doesn't generate original explanations of subject content.
 
 ---
 
@@ -36,97 +43,80 @@ Then open `http://localhost:8000`.
 
 ```
 Izatime/
-├── index.html      ← Entire app: markup, styles, and logic (self-contained)
-├── manifest.json    ← PWA config (name, icons, colors)
-├── sw.js            ← Service worker (offline caching)
-├── package.json     ← Dev scripts only (no build step)
-└── icons/           ← PWA icons (72px–512px)
+├── index.html                 ← App shell only (header, nav, mount points)
+├── manifest.json               ← PWA config
+├── sw.js                       ← Service worker (offline cache)
+├── css/
+│   ├── base.css                 design tokens, reset, app shell, splash
+│   ├── components.css           buttons, forms, chips, modal, toast, charts
+│   └── views.css                per-screen layout (dashboard/focus/analytics)
+├── js/
+│   ├── app.js                   bootstrap + hash-free router
+│   ├── pwa.js                   service worker reg, offline ribbon, install prompt
+│   ├── core/
+│   │   ├── store.js              localStorage persistence, migrations, backup
+│   │   ├── models.js             entity factories + default state
+│   │   ├── events.js             tiny pub/sub bus
+│   │   ├── dates.js              day-key date helpers (no timezone bugs)
+│   │   └── id.js                 UUID helper
+│   ├── services/
+│   │   ├── scheduler.js          recurring/one-off session expansion
+│   │   ├── spacedRepetition.js   SM-2 algorithm for topics & flashcards
+│   │   ├── aiCoach.js            recommendations, daily tip, quiz generation
+│   │   ├── analytics.js          study minutes, completion rate, weak areas
+│   │   ├── focusTimer.js         Pomodoro state machine
+│   │   └── notifications.js      capped/deduped/quiet-hours notification rules
+│   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js
+│   └── views/                    dashboard.js, planner.js, focus.js, learningHub.js, analyticsView.js, settings.js
+└── icons/                       PWA icons (72px–512px)
 ```
 
-The app is intentionally a **single file**: all CSS lives in a `<style>` block
-and all JS lives in a `<script>` block inside `index.html`. There is no build
-step and no module bundler.
+Each service is a pure function layer over the store's state — no view
+imports another view, and no service touches the DOM. Views subscribe to
+store changes and re-render themselves; UI-only state (selected tab, open
+review session) lives in the view module, not the store.
 
 ---
 
 ## ✏️ Customization
 
-### Edit the timetable data
-Open `index.html` and find `loadData()` — it seeds `timetableData.SCHOOL` and
-`timetableData.STUDY` with example sessions the first time the app runs (no
-saved data yet). After that, all edits happen through the UI (+ Add session,
-✏️ edit, 🗑️ delete) and persist to `localStorage` under the key
-`iza_smart_data`.
-
-### Edit styles
-All styles are in the `<style>` block at the top of `index.html`.
-
-### Edit PWA settings
-Update `manifest.json` for app name, description, theme colors, and icons.
+- **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, notes, flashcards, quizzes, exams, and focus sessions.
+- **Styling**: change tokens in `css/base.css` (`:root` custom properties) to re-theme the whole app.
+- **Notification rules**: tune caps/quiet-hours logic in `js/services/notifications.js`.
+- **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
 
 ---
 
 ## 🛠️ Development
 
-### Available Scripts
 ```bash
-npm start    # Start development server
+npm start    # Start a local static server
 npm run dev  # Same as start
-npm run build # No-op (static site)
+npm run build # No-op (static site, no bundler)
 ```
 
-### Browser Support
-Any modern evergreen browser (Chrome, Firefox, Safari, Edge). No IE support.
+Any modern evergreen browser (Chrome, Firefox, Safari, Edge). ES modules required.
 
 ---
 
 ## 🚀 Deployment
 
-### GitHub Pages
-1. Go to the repository → **Settings → Pages**
-2. Under **Source**, select **Deploy from a branch**
-3. Select the **master** branch and **/(root)** folder → **Save**
-4. Live at `https://numzn.github.io/Izatime/`
+**GitHub Pages**: Settings → Pages → Deploy from branch → `master` / `(root)` → live at `https://numzn.github.io/Izatime/`.
 
-### Netlify (alternative)
-Drag the project folder onto [netlify.com/drop](https://netlify.com/drop) for an instant HTTPS URL.
+**Netlify**: drag the project folder onto [netlify.com/drop](https://netlify.com/drop).
 
-### Manual Hosting
-Upload all files to any static host that supports HTTPS (required for service worker + install prompt).
-
----
-
-## 📱 Installation on Mobile
-
-1. Open the app URL in Chrome/Safari
-2. Tap "Add to Home Screen" (or use the in-app install banner)
-3. App appears on the home screen like a native app
+Any static HTTPS host works — there's no backend.
 
 ---
 
 ## 🔧 Troubleshooting
 
-### App Won't Load
-- Check the browser console for errors
-- Try a hard refresh
-
-### PWA Won't Install
-- Must be served over HTTPS (or localhost)
-- Check `manifest.json` is valid
-- Service worker must register successfully
-
-### Offline Not Working
-- Check the service worker is registered (DevTools → Application → Service Workers)
-- Verify the cache is populated (DevTools → Application → Cache Storage)
-- Bump `CACHE_NAME` in `sw.js` after changing cached files so clients pick up the update
-
-### Stale Data After an Update
-All state (timetable, completion, streaks) lives in `localStorage` under
-`iza_smart_data`. Clear it via DevTools → Application → Local Storage if you
-need a clean slate.
+- **Stale UI after an update**: bump `CACHE_NAME` in `sw.js` so clients fetch fresh assets.
+- **Notifications not firing**: check Settings shows "Allowed"; browsers block `Notification` permission requests outside a user gesture, quiet hours, or once 3/day have already fired.
+- **Lost data**: all state lives under the `izatime:data` localStorage key, with the previous version kept at `izatime:backup`. Export a backup from Settings regularly — this is a single-device app with no sync.
 
 ---
 
 ## 📄 License
 
-MIT License - feel free to use and modify!
+MIT License — feel free to use and modify!
