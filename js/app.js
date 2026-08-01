@@ -1,71 +1,109 @@
-// Main application initialization
-import { initDOM, initClock, initDayChips, renderTimetable, initEventHandlers, initSplash } from './ui.js';
-import { initPWA } from './pwa.js';
+import { loadStore, getState, subscribe } from './core/store.js';
+import { renderNav, ROUTES } from './components/nav.js';
+import { registerServiceWorker, initOfflineDetection, initInstallPrompt } from './pwa.js';
+import * as notifications from './services/notifications.js';
 
-// Global error handler
-window.addEventListener('error', (event) => {
-  console.error('Global error:', event.error);
-  // Could show user-friendly error message here
-});
+import * as dashboard from './views/dashboard.js';
+import * as planner from './views/planner.js';
+import * as focus from './views/focus.js';
+import * as hub from './views/learningHub.js';
+import * as analyticsView from './views/analyticsView.js';
+import * as settings from './views/settings.js';
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', event.reason);
-});
+const VIEWS = {
+  dashboard, planner, focus, hub, progress: analyticsView, settings,
+};
 
-// Initialize the application
+let currentRoute = 'dashboard';
+let currentParams = {};
+let currentModule = null;
+
+let viewRoot;
+let navRoot;
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'dark' || theme === 'light') root.setAttribute('data-theme', theme);
+  else root.removeAttribute('data-theme');
+}
+
+function renderCurrentView() {
+  const state = getState();
+  applyTheme(state.settings.theme);
+
+  const nextModule = VIEWS[currentRoute] || dashboard;
+  if (currentModule && currentModule !== nextModule) currentModule.destroy?.();
+  currentModule = nextModule;
+
+  try {
+    nextModule.render(viewRoot, { state, params: currentParams, navigate });
+  } catch (error) {
+    console.error(`Failed to render view "${currentRoute}":`, error);
+    viewRoot.innerHTML = '<div class="empty-state"><p>⚠️ This screen hit a snag. Try another tab.</p></div>';
+  }
+
+  renderNav(navRoot, ROUTES.some((r) => r.id === currentRoute) ? currentRoute : null, navigate);
+}
+
+function navigate(routeId, params = {}) {
+  if (!VIEWS[routeId]) return;
+  currentRoute = routeId;
+  currentParams = params;
+  viewRoot.scrollTo?.({ top: 0 });
+  renderCurrentView();
+}
+
+function initSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  setTimeout(() => splash.classList.add('hidden'), 700);
+}
+
+function initHeader() {
+  document.getElementById('btnSettings')?.addEventListener('click', () => navigate('settings'));
+}
+
+function startNotificationLoop() {
+  setInterval(() => {
+    try {
+      notifications.tick();
+    } catch (error) {
+      console.warn('Notification check failed:', error);
+    }
+  }, 60000);
+}
+
 function initApp() {
   try {
-    console.log('Initializing Iza:time app...');
+    loadStore();
+    viewRoot = document.getElementById('view-root');
+    navRoot = document.getElementById('bottomNav');
 
-    // Initialize in correct order
-    initDOM();
+    if (!viewRoot || !navRoot) throw new Error('App shell elements missing');
+
+    initHeader();
     initSplash();
-    initClock();
-    initDayChips();
-    initEventHandlers();
-    renderTimetable(); // Initial render
-    initPWA();
+    registerServiceWorker();
+    initOfflineDetection();
+    initInstallPrompt();
+    startNotificationLoop();
 
-    console.log('App initialized successfully');
-
+    subscribe(() => renderCurrentView());
+    navigate('dashboard');
   } catch (error) {
-    console.error('App initialization failed:', error);
-
-    // Show error to user
-    const errorMsg = document.createElement('div');
-    errorMsg.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #ff6b6b;
-      color: white;
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      z-index: 10000;
-      font-family: 'Sora', sans-serif;
-      max-width: 300px;
-    `;
-    errorMsg.innerHTML = `
-      <h3>⚠️ App Error</h3>
-      <p>Failed to load the app. Please refresh the page.</p>
-      <button onclick="location.reload()" style="
-        background: white;
-        color: #ff6b6b;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
-        margin-top: 10px;
-        cursor: pointer;
-        font-weight: 600;
-      ">Refresh</button>
-    `;
-    document.body.appendChild(errorMsg);
+    console.error('App failed to start:', error);
+    document.body.innerHTML = `
+      <div class="fatal-error">
+        <h2>⚠️ Iza:time couldn't start</h2>
+        <p>Please refresh the page. Your saved data is untouched.</p>
+        <button onclick="location.reload()">Refresh</button>
+      </div>`;
   }
 }
 
-// Start the app when DOM is ready
+window.addEventListener('error', (event) => console.error('Global error:', event.error || event.message));
+window.addEventListener('unhandledrejection', (event) => console.error('Unhandled rejection:', event.reason));
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {

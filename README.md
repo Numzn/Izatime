@@ -1,197 +1,122 @@
-# Iza:time PWA 📱⏳
+# Iza:time — AI Study Suite 🧠⏳
 
-A Progressive Web App (PWA) timetable for Iza — installable on Android like a native app.
+A calm, offline-first study companion PWA. Plan subjects and sessions, review
+with spaced repetition, focus with a Pomodoro timer, and see real progress —
+all backed by a heuristic (no external API) study coach.
 
 ---
 
 ## 🚀 Quick Start
 
-### Development
 ```bash
 npm run dev
 # or
 python -m http.server 8000
 ```
 
-### GitHub Pages Deployment
-1. Go to your repository: https://github.com/Numzn/Izatime
-2. Click **Settings** → **Pages**
-3. Under **Source**, select **Deploy from a branch**
-4. Select **master** branch and **/(root)** folder
-5. Click **Save**
-6. Your PWA will be live at: `https://numzn.github.io/Izatime/`
-
-### Netlify Deployment (Alternative)
-- **Netlify**: Drag the entire folder to [netlify.com/drop](https://netlify.com/drop)
-- **URL**: Get instant HTTPS URL + deployment
+Open `http://localhost:8000`. No build step — plain ES modules loaded natively.
 
 ---
 
 ## ✅ Features
 
-- **📱 PWA Ready**: Install on mobile devices
-- **⚡ Offline Support**: Works without internet
-- **🎨 Modern UI**: Clean, responsive design
-- **🕐 Live Clock**: Real-time date/time display
-- **📅 Smart Today Detection**: Highlights current day
-- **🔄 Dual Views**: School and Study schedules
-- **🎯 Error Handling**: Robust error recovery
-- **📦 Modular Code**: ES6 modules for maintainability
+- **🏠 Dashboard** — today's plan, next session, daily goal ring, streak, focus time, and top AI recommendations.
+- **🗓️ Planner** — subjects, topics, one-off or recurring sessions, exams.
+- **🍅 Focus** — configurable Pomodoro (focus/break/long break) with a 7-day focus history.
+- **📚 Learning Hub** — per-subject notes, flashcards with spaced repetition (SM-2), and quizzes generated from your own flashcards.
+- **📈 Progress** — study trend, completion rate, per-subject performance, and weak-area flags.
+- **✨ AI Study Coach** — a rule-based engine (not a hosted LLM — see below) that surfaces neglected subjects, due reviews, upcoming exams, and one contextual tip a day.
+- **🔔 Smart notifications** — capped at 3/day, deduplicated per item, quiet-hours aware. Requires explicit permission from Settings.
+- **⚡ Offline-first** — service worker precaches the full app shell; all data lives in `localStorage` with an automatic rolling backup.
+- **🌗 Theme** — light/dark/system, plus data export/import/reset in Settings.
+
+### About the "AI"
+There's no external API call and no network dependency — the coach is
+heuristic logic over your real data (due dates, completion rates, ease
+factors, streaks). This keeps the app fully offline, free, instant, and
+free of any client-side API-key exposure. It recommends *what* and *when*
+to study; it doesn't generate original explanations of subject content.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-iza-time-netlify/
-├── index.html           ← Main HTML file
+Izatime/
+├── index.html                 ← App shell only (header, nav, mount points)
+├── manifest.json               ← PWA config
+├── sw.js                       ← Service worker (offline cache)
 ├── css/
-│   └── styles.css       ← All styles
+│   ├── base.css                 design tokens, reset, app shell, splash
+│   ├── components.css           buttons, forms, chips, modal, toast, charts
+│   └── views.css                per-screen layout (dashboard/focus/analytics)
 ├── js/
-│   ├── data.js          ← Timetable data & mappings
-│   ├── ui.js            ← UI rendering & event handlers
-│   ├── pwa.js           ← PWA functionality
-│   └── app.js           ← Main initialization
-├── manifest.json        ← PWA config
-├── sw.js                ← Service worker (offline)
-├── package.json         ← Development config
-└── icons/               ← PWA icons
+│   ├── app.js                   bootstrap + hash-free router
+│   ├── pwa.js                   service worker reg, offline ribbon, install prompt
+│   ├── core/
+│   │   ├── store.js              localStorage persistence, migrations, backup
+│   │   ├── models.js             entity factories + default state
+│   │   ├── events.js             tiny pub/sub bus
+│   │   ├── dates.js              day-key date helpers (no timezone bugs)
+│   │   └── id.js                 UUID helper
+│   ├── services/
+│   │   ├── scheduler.js          recurring/one-off session expansion
+│   │   ├── spacedRepetition.js   SM-2 algorithm for topics & flashcards
+│   │   ├── aiCoach.js            recommendations, daily tip, quiz generation
+│   │   ├── analytics.js          study minutes, completion rate, weak areas
+│   │   ├── focusTimer.js         Pomodoro state machine
+│   │   └── notifications.js      capped/deduped/quiet-hours notification rules
+│   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js
+│   └── views/                    dashboard.js, planner.js, focus.js, learningHub.js, analyticsView.js, settings.js
+└── icons/                       PWA icons (72px–512px)
 ```
+
+Each service is a pure function layer over the store's state — no view
+imports another view, and no service touches the DOM. Views subscribe to
+store changes and re-render themselves; UI-only state (selected tab, open
+review session) lives in the view module, not the store.
 
 ---
 
 ## ✏️ Customization
 
-### Edit Timetable Data
-Open `js/data.js` and modify:
-- `schoolData`: School schedule by day
-- `studyData`: Study schedule by day
-- `subjectFull`: Subject code to full name mapping
-- `iconMap`: Subject code to emoji icon mapping
-
-### Edit Styles
-Modify `css/styles.css` for:
-- Colors, fonts, spacing
-- Animations and transitions
-- Responsive breakpoints
-
-### Edit PWA Settings
-Update `manifest.json` for:
-- App name and description
-- Theme colors
-- Icon paths
+- **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, notes, flashcards, quizzes, exams, and focus sessions.
+- **Styling**: change tokens in `css/base.css` (`:root` custom properties) to re-theme the whole app.
+- **Notification rules**: tune caps/quiet-hours logic in `js/services/notifications.js`.
+- **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
 
 ---
 
 ## 🛠️ Development
 
-### Available Scripts
 ```bash
-npm start    # Start development server
+npm start    # Start a local static server
 npm run dev  # Same as start
-npm run build # No-op (static site)
+npm run build # No-op (static site, no bundler)
 ```
 
-### Browser Support
-- ✅ Chrome 61+
-- ✅ Firefox 60+
-- ✅ Safari 11+
-- ✅ Edge 79+
-- ❌ IE 11 and below (ES6 modules not supported)
-
-### Error Handling
-The app includes comprehensive error handling:
-- DOM element validation
-- Network failure recovery
-- Module loading fallbacks
-- User-friendly error messages
+Any modern evergreen browser (Chrome, Firefox, Safari, Edge). ES modules required.
 
 ---
 
-## 🚀 Deployment Options
+## 🚀 Deployment
 
-### Option A — Netlify (Recommended)
-1. Go to [netlify.com/drop](https://netlify.com/drop)
-2. Drag the entire `iza-time-netlify` folder
-3. Get instant URL + HTTPS
+**GitHub Pages**: Settings → Pages → Deploy from branch → `master` / `(root)` → live at `https://numzn.github.io/Izatime/`.
 
-### Option B — GitHub Pages
-1. Create GitHub repository
-2. Upload all files
-3. Settings → Pages → Branch: main
-4. URL: `https://username.github.io/repo-name`
+**Netlify**: drag the project folder onto [netlify.com/drop](https://netlify.com/drop).
 
-### Option C — Manual Hosting
-Upload all files to any static web host that supports HTTPS.
-
----
-
-## 📱 Installation on Mobile
-
-1. Open the app URL in Chrome/Safari
-2. Look for "Add to Home Screen" banner
-3. Tap Install
-4. App appears on home screen like native app
+Any static HTTPS host works — there's no backend.
 
 ---
 
 ## 🔧 Troubleshooting
 
-### App Won't Load
-- Check browser console for errors
-- Ensure ES6 modules are supported
-- Try refreshing the page
-
-### PWA Won't Install
-- Must be served over HTTPS
-- Check manifest.json is valid
-- Service worker must register successfully
-
-### Offline Not Working
-- Check service worker is registered
-- Verify cache is populated
-- Check browser developer tools → Application → Storage
-
----
-
-## 📈 Performance
-
-- **First Load**: ~50KB (cached)
-- **Subsequent Loads**: Instant (service worker)
-- **Offline**: Full functionality
-- **Lighthouse Score**: 95+ (typical)
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Make changes
-3. Test thoroughly
-4. Submit pull request
+- **Stale UI after an update**: bump `CACHE_NAME` in `sw.js` so clients fetch fresh assets.
+- **Notifications not firing**: check Settings shows "Allowed"; browsers block `Notification` permission requests outside a user gesture, quiet hours, or once 3/day have already fired.
+- **Lost data**: all state lives under the `izatime:data` localStorage key, with the previous version kept at `izatime:backup`. Export a backup from Settings regularly — this is a single-device app with no sync.
 
 ---
 
 ## 📄 License
 
-MIT License - feel free to use and modify!
-│   ├── ui.js            ← UI rendering and event handlers
-│   ├── pwa.js           ← PWA functionality
-│   └── app.js           ← Main application initialization
-├── manifest.json        ← PWA config (name, icon, colors)
-├── sw.js                ← Service worker (offline caching)
-└── icons/
-    ├── icon-72x72.png
-    ├── icon-96x96.png
-    ├── icon-128x128.png
-    ├── icon-144x144.png
-    ├── icon-152x152.png
-    ├── icon-192x192.png
-    └── icon-512x512.png
-```
-
----
-
-## ✏️ Editing the timetable
-
-Open `js/data.js` and edit the `schoolData` and `studyData` objects. Changes are instant when you refresh the page.
+MIT License — feel free to use and modify!

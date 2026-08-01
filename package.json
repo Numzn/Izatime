@@ -1,7 +1,7 @@
 {
   "name": "iza-time-pwa",
-  "version": "1.1.0",
-  "description": "Iza's personal school & study timetable PWA",
+  "version": "2.0.0",
+  "description": "Iza:time — an offline-first AI study suite PWA (planner, spaced repetition, focus timer, analytics)",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 8000",
@@ -16,9 +16,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/iza-time-netlify"
+    "url": "https://github.com/Numzn/Izatime"
   },
-  "homepage": "https://username.github.io/iza-time-netlify",
+  "homepage": "https://numzn.github.io/Izatime",
   "engines": {
     "node": ">=14.0.0"
   },
