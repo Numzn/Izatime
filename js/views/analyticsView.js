@@ -4,6 +4,7 @@ import {
 } from '../services/analytics.js';
 import { escapeHtml, delegate } from '../components/dom.js';
 import { barChart } from '../components/charts.js';
+import { iconMarkup } from '../components/icons.js';
 
 const viewState = { days: 7 };
 
@@ -59,9 +60,14 @@ export function render(container, { state }) {
 
     ${weakAreas.length ? `
     <section class="dash-section">
-      <h2>📉 Weak areas</h2>
+      <h2>Weak areas</h2>
       <div class="weak-list">
-        ${weakAreas.map((w) => `<div class="weak-row"><strong>${escapeHtml(w.name)}</strong><span>${escapeHtml(w.reason)}</span></div>`).join('')}
+        ${weakAreas.map((w) => `
+          <div class="weak-row">
+            ${iconMarkup('trending-down', { size: 15 })}
+            <span><strong>${escapeHtml(w.name)}</strong>${escapeHtml(w.reason)}</span>
+          </div>
+        `).join('')}
       </div>
     </section>` : ''}
   `;

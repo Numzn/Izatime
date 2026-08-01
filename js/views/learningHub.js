@@ -6,12 +6,13 @@ import { generateQuiz, getStudyStrategy } from '../services/aiCoach.js';
 import { escapeHtml, delegate, clear } from '../components/dom.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { iconMarkup } from '../components/icons.js';
 
 const TABS = [
-  { id: 'notes', label: '📝 Notes' },
-  { id: 'flashcards', label: '🃏 Cards' },
-  { id: 'quizzes', label: '❓ Quizzes' },
-  { id: 'topics', label: '🎯 Topics' },
+  { id: 'notes', label: 'Notes', icon: 'notebook' },
+  { id: 'flashcards', label: 'Cards', icon: 'layers' },
+  { id: 'quizzes', label: 'Quizzes', icon: 'help-circle' },
+  { id: 'topics', label: 'Topics', icon: 'target' },
 ];
 
 const MASTERY_LABEL = { new: 'New', learning: 'Learning', mastered: 'Mastered' };
@@ -160,7 +161,7 @@ function openReviewSession(subjectId) {
       showingBack = false;
       if (index >= queue.length) {
         close();
-        showToast('Review complete 🎉');
+        showToast('Review complete');
       } else {
         draw();
       }
@@ -273,7 +274,7 @@ export function render(container, { state, params, navigate }) {
     </section>
 
     <div class="hub-tabs">
-      ${TABS.map((t) => `<button class="hub-tab${t.id === viewState.tab ? ' active' : ''}" data-select-tab="${t.id}">${t.label}</button>`).join('')}
+      ${TABS.map((t) => `<button class="hub-tab${t.id === viewState.tab ? ' active' : ''}" data-select-tab="${t.id}">${iconMarkup(t.icon, { size: 14 })}${t.label}</button>`).join('')}
     </div>
 
     <section class="hub-content">
@@ -297,7 +298,7 @@ export function render(container, { state, params, navigate }) {
       ` : ''}
 
       ${viewState.tab === 'quizzes' ? `
-        <div class="section-header"><h2>Quizzes</h2><button class="btn-chip" data-action="generate-quiz">✨ Generate</button></div>
+        <div class="section-header"><h2>Quizzes</h2><button class="btn-chip" data-action="generate-quiz">${iconMarkup('spark', { size: 12 })}Generate</button></div>
         ${quizzes.length ? `<div class="quiz-list">${quizzes.slice().reverse().map((q) => {
           const last = q.attempts[q.attempts.length - 1];
           return `<button class="quiz-row" data-open-quiz="${q.id}">

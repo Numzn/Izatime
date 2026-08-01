@@ -8,8 +8,10 @@ import { masteryLabel } from '../services/spacedRepetition.js';
 import { escapeHtml, delegate } from '../components/dom.js';
 import { openModal, closeModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { iconMarkup } from '../components/icons.js';
 
-const TYPE_LABEL = { school: '🏫 School', study: '📘 Study', 'exam-prep': '📝 Exam prep' };
+const TYPE_LABEL = { school: 'School', study: 'Study', 'exam-prep': 'Exam prep' };
+const TYPE_ICON = { school: 'graduation-cap', study: 'book', 'exam-prep': 'file-text' };
 const MASTERY_LABEL = { new: 'New', learning: 'Learning', mastered: 'Mastered' };
 
 const viewState = { subjectId: null, dateKey: todayKey() };
@@ -339,7 +341,7 @@ export function render(container, { state, params }) {
           </button>
         `).join('')}
       </div>
-      ${state.subjects.length && viewState.subjectId ? `<button class="link-btn" data-action="edit-subject">✏️ Edit ${escapeHtml(state.subjects.find((s) => s.id === viewState.subjectId)?.name || '')}</button>` : ''}
+      ${state.subjects.length && viewState.subjectId ? `<button class="link-btn" data-action="edit-subject">${iconMarkup('edit', { size: 13 })}Edit ${escapeHtml(state.subjects.find((s) => s.id === viewState.subjectId)?.name || '')}</button>` : ''}
       ${!state.subjects.length ? '<p class="empty-state-inline">Create your first subject to start planning.</p>' : ''}
     </section>
 
@@ -354,8 +356,9 @@ export function render(container, { state, params }) {
           ${dayEntries.map(({ session, completed }) => `
             <div class="session-row editable${completed ? ' completed' : ''}">
               <input type="checkbox" data-toggle-session="${session.id}" ${completed ? 'checked' : ''}>
+              <span class="session-icon">${iconMarkup(TYPE_ICON[session.type] || 'book', { size: 15 })}</span>
               <span class="session-info" data-edit-session="${session.id}">
-                <span class="session-title">${escapeHtml(session.title)}${session.recurrence ? ' 🔁' : ''}</span>
+                <span class="session-title">${escapeHtml(session.title)}${session.recurrence ? ` ${iconMarkup('repeat', { size: 11 })}` : ''}</span>
                 <span class="session-meta">${TYPE_LABEL[session.type]} · ${session.startTime} · ${session.durationMinutes}m</span>
               </span>
             </div>

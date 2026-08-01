@@ -2,6 +2,7 @@ import { loadStore, getState, subscribe } from './core/store.js';
 import { renderNav, ROUTES } from './components/nav.js';
 import { registerServiceWorker, initOfflineDetection, initInstallPrompt } from './pwa.js';
 import * as notifications from './services/notifications.js';
+import { iconMarkup } from './components/icons.js';
 
 import * as dashboard from './views/dashboard.js';
 import * as planner from './views/planner.js';
@@ -39,7 +40,7 @@ function renderCurrentView() {
     nextModule.render(viewRoot, { state, params: currentParams, navigate });
   } catch (error) {
     console.error(`Failed to render view "${currentRoute}":`, error);
-    viewRoot.innerHTML = '<div class="empty-state"><p>⚠️ This screen hit a snag. Try another tab.</p></div>';
+    viewRoot.innerHTML = `<div class="empty-state">${iconMarkup('alert-triangle', { size: 22 })}<p>This screen hit a snag. Try another tab.</p></div>`;
   }
 
   renderNav(navRoot, ROUTES.some((r) => r.id === currentRoute) ? currentRoute : null, navigate);
@@ -94,7 +95,7 @@ function initApp() {
     console.error('App failed to start:', error);
     document.body.innerHTML = `
       <div class="fatal-error">
-        <h2>⚠️ Iza:time couldn't start</h2>
+        <h2>${iconMarkup('alert-triangle', { size: 20 })}Iza:time couldn't start</h2>
         <p>Please refresh the page. Your saved data is untouched.</p>
         <button onclick="location.reload()">Refresh</button>
       </div>`;

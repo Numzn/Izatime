@@ -3,18 +3,17 @@ import { todayKey } from './dates.js';
 
 export const SCHEMA_VERSION = 1;
 
-export const SUBJECT_COLORS = ['#4d7cff', '#ff6b6b', '#2fb380', '#f0a500', '#9a6cff', '#ff8fb1', '#2bb8c4'];
+export const SUBJECT_COLORS = ['#5b6df0', '#3fae74', '#c98a2e', '#d9635f', '#8a6fd8', '#4a9fb0', '#b06fae'];
 
 export function defaultSRS() {
   return { easeFactor: 2.5, interval: 0, repetitions: 0, nextReviewAt: todayKey(), lastReviewedAt: null };
 }
 
-export function createSubject({ name, color, icon = '📘', priority = 2 }) {
+export function createSubject({ name, color, priority = 2 }) {
   return {
     id: createId(),
     name,
     color: color || SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)],
-    icon,
     priority,
     createdAt: new Date().toISOString(),
   };

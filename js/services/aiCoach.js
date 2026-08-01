@@ -60,7 +60,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
       recs.push({
         id: `next-${next.session.id}`,
         urgency: 3,
-        icon: '⏰',
+        icon: 'timer',
         title: minsAway <= 0 ? `${next.session.title} is starting now` : `${next.session.title} starts in ${minsAway}m`,
         detail: subjectName(state, next.session.subjectId),
         action: { type: 'go-focus', subjectId: next.session.subjectId, sessionId: next.session.id },
@@ -74,7 +74,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     recs.push({
       id: 'due-review',
       urgency: 2,
-      icon: '🧠',
+      icon: 'layers',
       title: `${dueCards.length + dueTopics.length} review${dueCards.length + dueTopics.length === 1 ? '' : 's'} due`,
       detail: 'Spaced repetition works best when reviews happen on time.',
       action: { type: 'go-hub' },
@@ -87,7 +87,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     recs.push({
       id: `neglect-${top.subject.id}`,
       urgency: 2,
-      icon: '📌',
+      icon: 'bell',
       title: `${top.subject.name} needs attention`,
       detail: top.last
         ? `Not studied in ${top.daysSinceActive} days`
@@ -105,7 +105,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     recs.push({
       id: `exam-${exam.id}`,
       urgency: 3,
-      icon: '📝',
+      icon: 'file-text',
       title: `${exam.name} in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
       detail: subjectName(state, exam.subjectId),
       action: { type: 'go-planner', subjectId: exam.subjectId },
@@ -116,7 +116,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     recs.push({
       id: `weak-${w.type}-${w.id}`,
       urgency: 1,
-      icon: '📉',
+      icon: 'trending-down',
       title: `Weak area: ${w.name}`,
       detail: w.reason,
       action: w.type === 'subject' ? { type: 'go-planner', subjectId: w.id } : { type: 'go-hub' },
@@ -131,20 +131,20 @@ export function getDailyTip(state, referenceKey = todayKey()) {
   const done = today.filter((e) => e.completed).length;
 
   if (today.length && done === today.length) {
-    return '✅ Everything for today is done. A short active-recall pass tonight will lock it in.';
+    return 'Everything for today is done. A short active-recall pass tonight will lock it in.';
   }
   if (today.length && done === 0) {
     const top = [...today].sort((a, b) => b.session.priority - a.session.priority)[0];
-    return `💡 Start with ${top.session.title} — it's today's top priority.`;
+    return `Start with ${top.session.title} — it's today's top priority.`;
   }
 
   const dueCount = getDueFlashcards(state, referenceKey).length + getDueTopics(state, referenceKey).length;
   if (dueCount > 0) {
-    return `🧠 ${dueCount} review${dueCount === 1 ? '' : 's'} are due — a quick pass now beats a long one later.`;
+    return `${dueCount} review${dueCount === 1 ? '' : 's'} due — a quick pass now beats a long one later.`;
   }
 
   const dayIndex = Math.floor(new Date().getTime() / 86400000) % STRATEGY_TIPS.length;
-  return `💡 ${STRATEGY_TIPS[dayIndex]}`;
+  return STRATEGY_TIPS[dayIndex];
 }
 
 export function getStudyStrategy(topic) {
