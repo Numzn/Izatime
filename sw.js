@@ -1,12 +1,7 @@
-const CACHE_NAME = 'iza-time-v1.1';
+const CACHE_NAME = 'iza-time-v1.2';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css',
-  './js/data.js',
-  './js/ui.js',
-  './js/pwa.js',
-  './js/app.js',
   './manifest.json',
   './icons/icon-72x72.png',
   './icons/icon-96x96.png',

@@ -16,9 +16,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/iza-time-netlify"
+    "url": "https://github.com/Numzn/Izatime"
   },
-  "homepage": "https://username.github.io/iza-time-netlify",
+  "homepage": "https://numzn.github.io/Izatime",
   "engines": {
     "node": ">=14.0.0"
   },

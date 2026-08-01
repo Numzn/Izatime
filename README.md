@@ -1,85 +1,68 @@
 # Iza:time PWA 📱⏳
 
-A Progressive Web App (PWA) timetable for Iza — installable on Android like a native app.
+A Progressive Web App (PWA) timetable for Iza — installable on Android/iOS like a native app.
 
 ---
 
 ## 🚀 Quick Start
 
-### Development
 ```bash
 npm run dev
 # or
 python -m http.server 8000
 ```
 
-### GitHub Pages Deployment
-1. Go to your repository: https://github.com/Numzn/Izatime
-2. Click **Settings** → **Pages**
-3. Under **Source**, select **Deploy from a branch**
-4. Select **master** branch and **/(root)** folder
-5. Click **Save**
-6. Your PWA will be live at: `https://numzn.github.io/Izatime/`
-
-### Netlify Deployment (Alternative)
-- **Netlify**: Drag the entire folder to [netlify.com/drop](https://netlify.com/drop)
-- **URL**: Get instant HTTPS URL + deployment
+Then open `http://localhost:8000`.
 
 ---
 
 ## ✅ Features
 
-- **📱 PWA Ready**: Install on mobile devices
-- **⚡ Offline Support**: Works without internet
-- **🎨 Modern UI**: Clean, responsive design
-- **🕐 Live Clock**: Real-time date/time display
-- **📅 Smart Today Detection**: Highlights current day
-- **🔄 Dual Views**: School and Study schedules
-- **🎯 Error Handling**: Robust error recovery
-- **📦 Modular Code**: ES6 modules for maintainability
+- **📱 PWA Ready**: Install on mobile devices, standalone display
+- **⚡ Offline Support**: Service worker caches the app shell
+- **🕐 Live Clock / Splash Screen**
+- **📅 Day Tabs**: MON–SUN, current day auto-selected on load
+- **🔄 Dual Views**: School and Study Plan schedules, tracked independently
+- **➕ Session Management**: Add / edit / delete sessions via modal (name + time)
+- **✅ Completion Tracking**: Checkbox per session, feeds streak & stats
+- **🍅 Pomodoro Timer**: 25-minute focus timer (start/pause/reset)
+- **💡 Smart Tips**: Contextual study tips based on today's progress
+- **🌙 Focus Mode**: Dims the UI for distraction-free study
+- **📡 Offline Ribbon**: Shows when the device loses connectivity
 
 ---
 
 ## 📁 Project Structure
 
 ```
-iza-time-netlify/
-├── index.html           ← Main HTML file
-├── css/
-│   └── styles.css       ← All styles
-├── js/
-│   ├── data.js          ← Timetable data & mappings
-│   ├── ui.js            ← UI rendering & event handlers
-│   ├── pwa.js           ← PWA functionality
-│   └── app.js           ← Main initialization
-├── manifest.json        ← PWA config
-├── sw.js                ← Service worker (offline)
-├── package.json         ← Development config
-└── icons/               ← PWA icons
+Izatime/
+├── index.html      ← Entire app: markup, styles, and logic (self-contained)
+├── manifest.json    ← PWA config (name, icons, colors)
+├── sw.js            ← Service worker (offline caching)
+├── package.json     ← Dev scripts only (no build step)
+└── icons/           ← PWA icons (72px–512px)
 ```
+
+The app is intentionally a **single file**: all CSS lives in a `<style>` block
+and all JS lives in a `<script>` block inside `index.html`. There is no build
+step and no module bundler.
 
 ---
 
 ## ✏️ Customization
 
-### Edit Timetable Data
-Open `js/data.js` and modify:
-- `schoolData`: School schedule by day
-- `studyData`: Study schedule by day
-- `subjectFull`: Subject code to full name mapping
-- `iconMap`: Subject code to emoji icon mapping
+### Edit the timetable data
+Open `index.html` and find `loadData()` — it seeds `timetableData.SCHOOL` and
+`timetableData.STUDY` with example sessions the first time the app runs (no
+saved data yet). After that, all edits happen through the UI (+ Add session,
+✏️ edit, 🗑️ delete) and persist to `localStorage` under the key
+`iza_smart_data`.
 
-### Edit Styles
-Modify `css/styles.css` for:
-- Colors, fonts, spacing
-- Animations and transitions
-- Responsive breakpoints
+### Edit styles
+All styles are in the `<style>` block at the top of `index.html`.
 
-### Edit PWA Settings
-Update `manifest.json` for:
-- App name and description
-- Theme colors
-- Icon paths
+### Edit PWA settings
+Update `manifest.json` for app name, description, theme colors, and icons.
 
 ---
 
@@ -93,105 +76,57 @@ npm run build # No-op (static site)
 ```
 
 ### Browser Support
-- ✅ Chrome 61+
-- ✅ Firefox 60+
-- ✅ Safari 11+
-- ✅ Edge 79+
-- ❌ IE 11 and below (ES6 modules not supported)
-
-### Error Handling
-The app includes comprehensive error handling:
-- DOM element validation
-- Network failure recovery
-- Module loading fallbacks
-- User-friendly error messages
+Any modern evergreen browser (Chrome, Firefox, Safari, Edge). No IE support.
 
 ---
 
-## 🚀 Deployment Options
+## 🚀 Deployment
 
-### Option A — Netlify (Recommended)
-1. Go to [netlify.com/drop](https://netlify.com/drop)
-2. Drag the entire `iza-time-netlify` folder
-3. Get instant URL + HTTPS
+### GitHub Pages
+1. Go to the repository → **Settings → Pages**
+2. Under **Source**, select **Deploy from a branch**
+3. Select the **master** branch and **/(root)** folder → **Save**
+4. Live at `https://numzn.github.io/Izatime/`
 
-### Option B — GitHub Pages
-1. Create GitHub repository
-2. Upload all files
-3. Settings → Pages → Branch: main
-4. URL: `https://username.github.io/repo-name`
+### Netlify (alternative)
+Drag the project folder onto [netlify.com/drop](https://netlify.com/drop) for an instant HTTPS URL.
 
-### Option C — Manual Hosting
-Upload all files to any static web host that supports HTTPS.
+### Manual Hosting
+Upload all files to any static host that supports HTTPS (required for service worker + install prompt).
 
 ---
 
 ## 📱 Installation on Mobile
 
 1. Open the app URL in Chrome/Safari
-2. Look for "Add to Home Screen" banner
-3. Tap Install
-4. App appears on home screen like native app
+2. Tap "Add to Home Screen" (or use the in-app install banner)
+3. App appears on the home screen like a native app
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### App Won't Load
-- Check browser console for errors
-- Ensure ES6 modules are supported
-- Try refreshing the page
+- Check the browser console for errors
+- Try a hard refresh
 
 ### PWA Won't Install
-- Must be served over HTTPS
-- Check manifest.json is valid
+- Must be served over HTTPS (or localhost)
+- Check `manifest.json` is valid
 - Service worker must register successfully
 
 ### Offline Not Working
-- Check service worker is registered
-- Verify cache is populated
-- Check browser developer tools → Application → Storage
+- Check the service worker is registered (DevTools → Application → Service Workers)
+- Verify the cache is populated (DevTools → Application → Cache Storage)
+- Bump `CACHE_NAME` in `sw.js` after changing cached files so clients pick up the update
 
----
-
-## 📈 Performance
-
-- **First Load**: ~50KB (cached)
-- **Subsequent Loads**: Instant (service worker)
-- **Offline**: Full functionality
-- **Lighthouse Score**: 95+ (typical)
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Make changes
-3. Test thoroughly
-4. Submit pull request
+### Stale Data After an Update
+All state (timetable, completion, streaks) lives in `localStorage` under
+`iza_smart_data`. Clear it via DevTools → Application → Local Storage if you
+need a clean slate.
 
 ---
 
 ## 📄 License
 
 MIT License - feel free to use and modify!
-│   ├── ui.js            ← UI rendering and event handlers
-│   ├── pwa.js           ← PWA functionality
-│   └── app.js           ← Main application initialization
-├── manifest.json        ← PWA config (name, icon, colors)
-├── sw.js                ← Service worker (offline caching)
-└── icons/
-    ├── icon-72x72.png
-    ├── icon-96x96.png
-    ├── icon-128x128.png
-    ├── icon-144x144.png
-    ├── icon-152x152.png
-    ├── icon-192x192.png
-    └── icon-512x512.png
-```
-
----
-
-## ✏️ Editing the timetable
-
-Open `js/data.js` and edit the `schoolData` and `studyData` objects. Changes are instant when you refresh the page.
