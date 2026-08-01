@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iza-time-v2.0';
+const CACHE_NAME = 'iza-time-v2.1';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ const ASSETS = [
   './js/components/modal.js',
   './js/components/charts.js',
   './js/components/nav.js',
+  './js/components/icons.js',
   './js/views/dashboard.js',
   './js/views/planner.js',
   './js/views/focus.js',

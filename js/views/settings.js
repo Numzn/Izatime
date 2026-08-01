@@ -3,6 +3,7 @@ import * as notifications from '../services/notifications.js';
 import { delegate } from '../components/dom.js';
 import { confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { iconMarkup } from '../components/icons.js';
 
 function permissionText() {
   if (!notifications.isSupported()) return 'Not supported on this device';
@@ -63,8 +64,8 @@ export function render(container, { state, navigate }) {
       <h2>Your data</h2>
       <p class="settings-note">Everything is stored on this device only. Export a backup regularly.</p>
       <div class="settings-actions">
-        <button class="btn btn-ghost" data-action="export">⬇ Export backup</button>
-        <button class="btn btn-ghost" data-action="import">⬆ Import backup</button>
+        <button class="btn btn-ghost" data-action="export">${iconMarkup('download', { size: 15 })}Export backup</button>
+        <button class="btn btn-ghost" data-action="import">${iconMarkup('upload', { size: 15 })}Import backup</button>
         <button class="btn btn-danger" data-action="reset">Reset all data</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">

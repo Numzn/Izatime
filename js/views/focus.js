@@ -1,4 +1,5 @@
 import { last7Days, todayKey } from '../core/dates.js';
+import { getState } from '../core/store.js';
 import { getFocusMinutesForDate } from '../services/analytics.js';
 import * as focusTimer from '../services/focusTimer.js';
 import { escapeHtml, delegate } from '../components/dom.js';
@@ -26,7 +27,8 @@ function updateTimerDOM(container) {
   const phaseEl = container.querySelector('#focusPhase');
   if (!clockEl || !phaseEl) return;
 
-  clockEl.textContent = formatClock(snap.remainingSeconds);
+  const previewSeconds = snap.phase === 'idle' ? getState().settings.focusMinutes * 60 : snap.remainingSeconds;
+  clockEl.textContent = formatClock(previewSeconds);
   phaseEl.textContent = PHASE_LABEL[snap.phase] + (snap.isPaused ? ' · Paused' : '');
   container.querySelector('.focus-ring')?.classList.toggle('is-break', snap.phase === 'break' || snap.phase === 'longBreak');
 
@@ -107,8 +109,8 @@ export function render(container, { state, params }) {
 
   unsubscribeTick = focusTimer.onTick(() => updateTimerDOM(container));
   unsubscribePhase = focusTimer.onPhaseComplete(({ phase, next }) => {
-    if (phase === 'focus') showToast(next === 'longBreak' ? '🎉 Focus block done — long break time' : '✅ Focus block done — short break');
-    else showToast('🔔 Break over — ready when you are');
+    if (phase === 'focus') showToast(next === 'longBreak' ? 'Focus block complete — long break time' : 'Focus block complete — short break');
+    else showToast('Break over — ready when you are');
   });
 
   delegate(container, 'click', '[data-focus]', (event, target) => {

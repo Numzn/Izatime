@@ -5,8 +5,9 @@ import { getDailyGoalProgress, getFocusMinutesForDate } from '../services/analyt
 import { getRecommendations, getDailyTip } from '../services/aiCoach.js';
 import { escapeHtml, delegate } from '../components/dom.js';
 import { ringChart } from '../components/charts.js';
+import { iconMarkup } from '../components/icons.js';
 
-const TYPE_ICON = { school: '🏫', study: '📘', 'exam-prep': '📝' };
+const TYPE_ICON = { school: 'graduation-cap', study: 'book', 'exam-prep': 'file-text' };
 
 function greeting() {
   const h = new Date().getHours();
@@ -36,7 +37,7 @@ export function render(container, { state, navigate }) {
         <p class="dash-date">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       </div>
       <div class="streak-badge" title="Current streak">
-        <span class="streak-flame">🔥</span>
+        <span class="streak-flame">${iconMarkup('flame', { size: 15 })}</span>
         <strong>${state.streak.current}</strong>
         <span>day${state.streak.current === 1 ? '' : 's'}</span>
       </div>
@@ -58,22 +59,22 @@ export function render(container, { state, navigate }) {
     <section class="dash-section">
       <h2>Next up</h2>
       <button class="next-card" data-action="go-focus" data-subject="${next.session.subjectId || ''}">
-        <div class="next-icon">${TYPE_ICON[next.session.type] || '📘'}</div>
+        <div class="next-icon">${iconMarkup(TYPE_ICON[next.session.type] || 'book', { size: 18 })}</div>
         <div class="next-info">
           <div class="next-title">${escapeHtml(next.session.title)}</div>
           <div class="next-meta">${escapeHtml(subjectName(state, next.session.subjectId))} · ${next.session.startTime}${next.dateKey !== dateKey ? ' · ' + next.dateKey : ''}</div>
         </div>
-        <div class="next-chevron">›</div>
+        <div class="next-chevron">${iconMarkup('chevron-right', { size: 16 })}</div>
       </button>
     </section>` : ''}
 
     ${recs.length ? `
     <section class="dash-section">
-      <h2>✨ AI Coach</h2>
+      <h2>${iconMarkup('spark', { size: 12 })} AI Coach</h2>
       <div class="rec-list">
         ${recs.map((r) => `
           <button class="rec-card" data-action="${r.action.type}" data-subject="${r.action.subjectId || ''}">
-            <span class="rec-icon">${r.icon}</span>
+            <span class="rec-icon">${iconMarkup(r.icon, { size: 17 })}</span>
             <span class="rec-body">
               <span class="rec-title">${escapeHtml(r.title)}</span>
               <span class="rec-detail">${escapeHtml(r.detail)}</span>
@@ -90,7 +91,7 @@ export function render(container, { state, navigate }) {
           ${entries.map(({ session, completed }) => `
             <label class="session-row${completed ? ' completed' : ''}">
               <input type="checkbox" data-toggle-session="${session.id}" data-date="${dateKey}" ${completed ? 'checked' : ''}>
-              <span class="session-icon">${TYPE_ICON[session.type] || '📘'}</span>
+              <span class="session-icon">${iconMarkup(TYPE_ICON[session.type] || 'book', { size: 16 })}</span>
               <span class="session-info">
                 <span class="session-title">${escapeHtml(session.title)}</span>
                 <span class="session-meta">${escapeHtml(subjectName(state, session.subjectId))} · ${session.startTime}</span>
@@ -106,7 +107,7 @@ export function render(container, { state, navigate }) {
       `}
     </section>
 
-    <p class="dash-tip">${escapeHtml(tip)}</p>
+    <p class="dash-tip">${iconMarkup('lightbulb', { size: 14 })}<span>${escapeHtml(tip)}</span></p>
   `;
 
   const ringSlot = container.querySelector('#goalRingSlot');
