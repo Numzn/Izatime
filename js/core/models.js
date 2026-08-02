@@ -19,25 +19,12 @@ export function createSubject({ name, color, priority = 2 }) {
   };
 }
 
-export function createTopic({ subjectId, name, difficulty = 2 }) {
-  return {
-    id: createId(),
-    subjectId,
-    name,
-    status: 'new',
-    difficulty,
-    srs: defaultSRS(),
-    createdAt: new Date().toISOString(),
-  };
-}
-
 export function createChecklistItem({ text }) {
   return { id: createId(), text, done: false };
 }
 
 export function createSession({
   subjectId,
-  topicId = null,
   title,
   type = 'study',
   date = todayKey(),
@@ -47,12 +34,10 @@ export function createSession({
   recurrence = null,
   lecturer = '',
   room = '',
-  checklist = [],
 }) {
   return {
     id: createId(),
     subjectId,
-    topicId,
     title,
     type,
     date,
@@ -62,30 +47,29 @@ export function createSession({
     recurrence,
     lecturer,
     room,
-    checklist,
     completions: [],
     createdAt: new Date().toISOString(),
   };
 }
 
-export function createNote({ subjectId, topicId = null, title, body = '' }) {
+export function createNote({ subjectId, title, body = '' }) {
   const now = new Date().toISOString();
   return {
-    id: createId(), subjectId, topicId, title, body, createdAt: now, updatedAt: now,
+    id: createId(), subjectId, title, body, createdAt: now, updatedAt: now,
   };
 }
 
-export function createFlashcard({ subjectId, topicId = null, front, back }) {
+export function createFlashcard({ subjectId, front, back }) {
   return {
-    id: createId(), subjectId, topicId, front, back, srs: defaultSRS(), createdAt: new Date().toISOString(),
+    id: createId(), subjectId, front, back, srs: defaultSRS(), createdAt: new Date().toISOString(),
   };
 }
 
 export function createQuiz({
-  subjectId, topicId = null, title, questions = [], source = 'generated',
+  subjectId, title, questions = [], source = 'generated',
 }) {
   return {
-    id: createId(), subjectId, topicId, title, questions, source, attempts: [], createdAt: new Date().toISOString(),
+    id: createId(), subjectId, title, questions, source, attempts: [], createdAt: new Date().toISOString(),
   };
 }
 
@@ -93,10 +77,10 @@ export function createQuiz({
 // or practical. Distinct from an assignment (§ below), which has a
 // deadline to submit by rather than a time to show up prepared for.
 export function createAssessment({
-  subjectId, name, date, startTime = null, kind = 'exam', weight = null, topicIds = [], checklist = [],
+  subjectId, name, date, startTime = null, kind = 'exam', weight = null,
 }) {
   return {
-    id: createId(), subjectId, name, date, startTime, kind, weight, topicIds, checklist, createdAt: new Date().toISOString(),
+    id: createId(), subjectId, name, date, startTime, kind, weight, createdAt: new Date().toISOString(),
   };
 }
 
@@ -173,7 +157,6 @@ export function defaultState() {
     // updatedAt to resolve sync conflicts (newest wins).
     updatedAt: new Date().toISOString(),
     subjects: [],
-    topics: [],
     sessions: [],
     notes: [],
     flashcards: [],

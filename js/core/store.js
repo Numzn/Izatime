@@ -68,12 +68,18 @@ function migrate(candidate) {
       startTime: null,
       kind: 'exam',
       weight: null,
-      topicIds: exam.topicIds || [],
-      checklist: [],
       createdAt: exam.createdAt,
     }));
   }
   delete migrated.exams;
+
+  // Topics were dropped in Phase A: the model, its spaced-repetition
+  // tracking, and the three services that read from it (subject
+  // performance, weak-area flagging, due-review count) never had a UI to
+  // create a topic in the first place, so nothing downstream of this ever
+  // observed anything but an empty array. Retire the key on load rather
+  // than carrying dead data forward in every future save.
+  delete migrated.topics;
 
   migrated.version = SCHEMA_VERSION;
   return migrated;

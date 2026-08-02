@@ -4,7 +4,7 @@ import {
 } from '../core/dates.js';
 import { createQuiz } from '../core/models.js';
 import { getSessionsForDate, getNextSession } from './scheduler.js';
-import { getDueFlashcards, getDueTopics } from './spacedRepetition.js';
+import { getDueFlashcards } from './spacedRepetition.js';
 import { getWeakAreas } from './analytics.js';
 import {
   getMostUrgentAssignment, reminderLeadDays, getUpcomingAssessments, getAssignmentsDueWithin,
@@ -142,16 +142,14 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
 
   // Due spaced-repetition reviews, general.
   const dueCards = getDueFlashcards(state, referenceKey);
-  const dueTopics = getDueTopics(state, referenceKey);
-  if (dueCards.length + dueTopics.length > 0) {
-    const bySubject = dueCards[0]?.subjectId || dueTopics[0]?.subjectId || null;
+  if (dueCards.length > 0) {
     recs.push({
       id: 'due-review',
       urgency: 1,
       icon: 'layers',
-      title: `${dueCards.length + dueTopics.length} review${dueCards.length + dueTopics.length === 1 ? '' : 's'} due`,
+      title: `${dueCards.length} review${dueCards.length === 1 ? '' : 's'} due`,
       detail: 'Spaced repetition works best when reviews happen on time.',
-      action: { subjectId: bySubject },
+      action: { subjectId: dueCards[0]?.subjectId || null },
     });
   }
 
@@ -169,8 +167,8 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
   return recs.sort((a, b) => b.urgency - a.urgency).slice(0, 4);
 }
 
-export function generateQuiz(state, subjectId, { topicId = null, count = 5 } = {}) {
-  const pool = state.flashcards.filter((c) => c.subjectId === subjectId && (!topicId || c.topicId === topicId));
+export function generateQuiz(state, subjectId, { count = 5 } = {}) {
+  const pool = state.flashcards.filter((c) => c.subjectId === subjectId);
   if (pool.length < 2) {
     return { error: 'Add at least 2 flashcards for this subject before generating a quiz.' };
   }
@@ -194,7 +192,6 @@ export function generateQuiz(state, subjectId, { topicId = null, count = 5 } = {
   const subject = state.subjects.find((s) => s.id === subjectId);
   return createQuiz({
     subjectId,
-    topicId,
     title: `${subject ? subject.name : 'Quiz'} check`,
     questions,
     source: 'generated',

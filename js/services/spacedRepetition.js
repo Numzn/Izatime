@@ -35,10 +35,6 @@ export function getDueFlashcards(state, referenceDateKey = todayKey()) {
   return state.flashcards.filter((card) => isDue(card.srs, referenceDateKey));
 }
 
-export function getDueTopics(state, referenceDateKey = todayKey()) {
-  return state.topics.filter((topic) => isDue(topic.srs, referenceDateKey));
-}
-
 export function masteryLabel(srs) {
   if (srs.repetitions === 0) return 'new';
   if (srs.interval < 7) return 'learning';

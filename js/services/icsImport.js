@@ -1,5 +1,5 @@
-import { createSubject, createSession } from '../core/models.js';
 import { minutesFromHHMM } from '../core/dates.js';
+import { resolveSubject, createSessionFromRow, newImportContext } from './timetableImport.js';
 
 const RRULE_DAY_TO_CODE = {
   MO: 'MON', TU: 'TUE', WE: 'WED', TH: 'THU', FR: 'FRI', SA: 'SAT', SU: 'SUN',
@@ -53,7 +53,7 @@ function parseICSDate(value, params) {
 
 function parseVEvent(lines) {
   const event = {
-    uid: null, summary: '', location: '', dtstart: null, dtend: null, rrule: null,
+    uid: null, summary: '', location: '', lecturer: '', dtstart: null, dtend: null, rrule: null,
   };
   lines.forEach((line) => {
     const prop = parseProperty(line);
@@ -64,6 +64,12 @@ function parseVEvent(lines) {
     else if (prop.name === 'DTSTART') event.dtstart = parseICSDate(prop.value, prop.params);
     else if (prop.name === 'DTEND') event.dtend = parseICSDate(prop.value, prop.params);
     else if (prop.name === 'RRULE') event.rrule = prop.value;
+    // ORGANIZER's CN param carries a display name where present — the
+    // closest thing .ics has to a lecturer field, since there is no
+    // dedicated one in the spec.
+    else if (prop.name === 'ORGANIZER' && prop.params.CN) {
+      event.lecturer = unescapeICS(prop.params.CN.replace(/^"|"$/g, '')).trim();
+    }
   });
   return event;
 }
@@ -115,53 +121,45 @@ function durationMinutes(dtstart, dtend) {
 // signature are recognized and skipped rather than imported.
 export function importTimetableICS(state, icsText) {
   const events = parseICS(icsText);
-  const result = { imported: 0, subjectsCreated: 0, skipped: [] };
-  let importedSubject = null;
+  const ctx = newImportContext();
 
   events.forEach((event, index) => {
     const label = event.summary || `Event ${index + 1}`;
 
     if (event.uid && event.uid.includes('@digital-timetable')) {
-      result.skipped.push(`"${label}": already in this app (its own export), skipped`);
+      ctx.result.skipped.push(`"${label}": already in this app (its own export), skipped`);
       return;
     }
     if (!event.summary) {
-      result.skipped.push(`Event ${index + 1}: missing a title`);
+      ctx.result.skipped.push(`Event ${index + 1}: missing a title`);
       return;
     }
     if (!event.dtstart) {
-      result.skipped.push(`"${label}": missing a start date/time`);
+      ctx.result.skipped.push(`"${label}": missing a start date/time`);
       return;
     }
     if (event.dtstart.allDay) {
-      result.skipped.push(`"${label}": all-day events aren't imported as classes`);
+      ctx.result.skipped.push(`"${label}": all-day events aren't imported as classes`);
       return;
     }
 
-    let subject = state.subjects.find((s) => event.summary.toLowerCase().includes(s.name.toLowerCase()));
-    if (!subject) {
-      if (!importedSubject) {
-        importedSubject = state.subjects.find((s) => s.name === 'Imported');
-        if (!importedSubject) {
-          importedSubject = createSubject({ name: 'Imported' });
-          state.subjects.push(importedSubject);
-          result.subjectsCreated += 1;
-        }
-      }
-      subject = importedSubject;
-    }
+    const subject = resolveSubject(
+      state,
+      { titleForFallbackMatch: event.summary, fallbackSubjectName: 'Imported' },
+      ctx,
+    );
 
-    state.sessions.push(createSession({
-      subjectId: subject.id,
+    state.sessions.push(createSessionFromRow(subject, {
       title: event.summary,
       date: event.dtstart.date,
       startTime: event.dtstart.time,
       durationMinutes: durationMinutes(event.dtstart, event.dtend),
       room: event.location || '',
+      lecturer: event.lecturer || '',
       recurrence: parseRRule(event.rrule),
     }));
-    result.imported += 1;
+    ctx.result.imported += 1;
   });
 
-  return result;
+  return ctx.result;
 }

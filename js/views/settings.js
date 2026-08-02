@@ -7,12 +7,54 @@ import { importTimetableICS } from '../services/icsImport.js';
 import { buildICS } from '../services/icsExport.js';
 import * as googleSync from '../services/googleSync.js';
 import { delegate, escapeHtml } from '../components/dom.js';
-import { confirmModal } from '../components/modal.js';
+import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
 
 let unsubscribeSync = null;
 const viewState = { editingClientId: false };
+
+// The moment "the timetable becomes the foundation" is actually visible,
+// instead of a toast that's gone in two seconds: what got created, and —
+// if permission is still undecided — a single tap to turn reminders on for
+// what was just imported, right when it's most obviously relevant.
+function showImportSummary(result, itemNoun) {
+  const body = document.createElement('div');
+
+  const summary = document.createElement('p');
+  summary.className = 'modal-message';
+  summary.textContent = `Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}`
+    + `${result.subjectsCreated ? `, created ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}.`;
+  body.appendChild(summary);
+
+  if (result.skipped.length) {
+    const skippedNote = document.createElement('p');
+    skippedNote.className = 'settings-note';
+    skippedNote.textContent = `${result.skipped.length} ${itemNoun}${result.skipped.length === 1 ? '' : 's'} skipped — see the browser console for details.`;
+    body.appendChild(skippedNote);
+  }
+
+  const actions = [{ label: 'Done', variant: result.imported > 0 && notifications.permissionState() === 'default' ? 'ghost' : 'primary', onClick: (close) => close() }];
+
+  if (result.imported > 0 && notifications.isSupported() && notifications.permissionState() === 'default') {
+    actions.push({
+      label: 'Turn on reminders',
+      variant: 'primary',
+      onClick: async (close) => {
+        const permission = await notifications.requestPermission();
+        if (permission === 'granted') {
+          mutate((s) => { s.settings.notificationsEnabled = true; });
+          showToast('Reminders turned on');
+        } else {
+          showToast('Notifications were not allowed');
+        }
+        close();
+      },
+    });
+  }
+
+  openModal({ title: 'Import complete', bodyNode: body, actions });
+}
 
 function permissionText() {
   if (!notifications.isSupported()) return 'Not supported on this device';
@@ -341,7 +383,7 @@ export function render(container, { state, navigate }) {
       let result;
       mutate((s) => { result = importTimetableCSV(s, text); });
       if (result.imported > 0) {
-        showToast(`Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}${result.subjectsCreated ? `, ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}${result.skipped.length ? ` — ${result.skipped.length} row${result.skipped.length === 1 ? '' : 's'} skipped` : ''}`);
+        showImportSummary(result, 'row');
       } else {
         showToast('No valid rows found in that CSV');
       }
@@ -361,7 +403,7 @@ export function render(container, { state, navigate }) {
       let result;
       mutate((s) => { result = importTimetableICS(s, text); });
       if (result.imported > 0) {
-        showToast(`Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}${result.subjectsCreated ? `, ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}${result.skipped.length ? ` — ${result.skipped.length} event${result.skipped.length === 1 ? '' : 's'} skipped` : ''}`);
+        showImportSummary(result, 'event');
       } else {
         showToast('No classes found in that calendar file');
       }
