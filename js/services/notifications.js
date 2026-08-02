@@ -1,9 +1,12 @@
 import {
-  diffInDays, isWithinQuietHours, minutesFromHHMM, nowHHMM, todayKey,
+  addDays, diffInDays, isWithinQuietHours, minutesFromHHMM, nowHHMM, todayKey,
 } from '../core/dates.js';
 import { mutate, getState } from '../core/store.js';
 import { getSessionsForDate } from './scheduler.js';
 import { getNeglectedSubjects } from './aiCoach.js';
+import {
+  getAssignmentsDueWithin, getUpcomingAssessments, isAssignmentDone, reminderLeadDays,
+} from './assignments.js';
 
 const MAX_PER_DAY = 3;
 const LOG_HISTORY = 14;
@@ -39,34 +42,103 @@ function recordNotification(dateKey, key) {
   });
 }
 
-function buildCandidates(state, dateKey, minutesNow) {
+function subjectLabel(state, subjectId, title) {
+  const subject = state.subjects.find((s) => s.id === subjectId);
+  return subject ? `${subject.name} — ${title}` : title;
+}
+
+// Class tiers: 1 day before (fires any time the day before — there's no
+// way to pin an exact hour without background delivery), 1 hour before,
+// 10 minutes before. The 10-minute tier is exempt from the daily cap in
+// tick() below — missing a class is the actual mission, a habit nudge is
+// not worth spending the same budget on.
+function classCandidates(state, dateKey, minutesNow) {
   const candidates = [];
+  const tomorrowKey = addDays(dateKey, 1);
+
+  getSessionsForDate(state, tomorrowKey).forEach(({ session, completed }) => {
+    if (completed) return;
+    candidates.push({
+      key: `session:${session.id}:${tomorrowKey}:1day`,
+      urgency: 2,
+      title: 'Tomorrow',
+      body: `${subjectLabel(state, session.subjectId, session.title)} is tomorrow at ${session.startTime}.`,
+    });
+  });
 
   getSessionsForDate(state, dateKey).forEach(({ session, completed }) => {
     if (completed) return;
     const minsAway = minutesFromHHMM(session.startTime) - minutesNow;
-    if (minsAway > 0 && minsAway <= 15) {
-      const subject = state.subjects.find((s) => s.id === session.subjectId);
+    const label = subjectLabel(state, session.subjectId, session.title);
+    if (minsAway > 45 && minsAway <= 75) {
       candidates.push({
-        key: `session:${session.id}:${dateKey}`,
+        key: `session:${session.id}:${dateKey}:1hour`,
         urgency: 3,
         title: 'Starting soon',
-        body: `${subject ? `${subject.name} — ` : ''}${session.title} starts in ${minsAway} minute${minsAway === 1 ? '' : 's'}.`,
+        body: `${label} starts in about an hour.`,
+      });
+    } else if (minsAway > 0 && minsAway <= 15) {
+      candidates.push({
+        key: `session:${session.id}:${dateKey}:10min`,
+        urgency: 4,
+        title: 'Starting soon',
+        body: `${label} starts in ${minsAway} minute${minsAway === 1 ? '' : 's'}.`,
+        exemptFromCap: true,
       });
     }
   });
 
-  state.assessments
-    .filter((e) => diffInDays(dateKey, e.date) >= 0 && diffInDays(dateKey, e.date) <= 2)
-    .forEach((exam) => {
-      const daysLeft = diffInDays(dateKey, exam.date);
-      candidates.push({
-        key: `exam:${exam.id}:${dateKey}`,
-        urgency: 3,
-        title: 'Exam coming up',
-        body: daysLeft === 0 ? `${exam.name} is today. Good luck!` : `${exam.name} is in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — review your weak topics.`,
-      });
-    });
+  return candidates;
+}
+
+// Assignment tiers: an effort-scaled lead-time reminder, then 3 days,
+// 1 day, and day-of. Stops entirely once marked submitted/graded.
+function assignmentCandidates(state, dateKey) {
+  return getAssignmentsDueWithin(state, 14, dateKey)
+    .filter((a) => !isAssignmentDone(a))
+    .map((a) => {
+      const daysLeft = diffInDays(dateKey, a.dueDate);
+      const lead = reminderLeadDays(a);
+      let tier = null;
+      if (daysLeft === 0) tier = 'dueday';
+      else if (daysLeft === 1) tier = '1day';
+      else if (daysLeft === 3) tier = '3day';
+      else if (daysLeft === lead && lead > 3) tier = 'lead';
+      if (!tier) return null;
+      const label = subjectLabel(state, a.subjectId, a.title);
+      return {
+        key: `assignment:${a.id}:${dateKey}:${tier}`,
+        urgency: daysLeft <= 1 ? 4 : 2,
+        title: daysLeft === 0 ? 'Due today' : 'Assignment due soon',
+        body: daysLeft === 0 ? `${label} is due today.` : `${label} is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`,
+      };
+    })
+    .filter(Boolean);
+}
+
+// Assessment tiers: 1 week, 3 days, 1 day before, plus day-of.
+function assessmentCandidates(state, dateKey) {
+  return getUpcomingAssessments(state, 7, dateKey)
+    .map((a) => {
+      const daysLeft = diffInDays(dateKey, a.date);
+      if (![7, 3, 1, 0].includes(daysLeft)) return null;
+      const label = subjectLabel(state, a.subjectId, a.name);
+      return {
+        key: `assessment:${a.id}:${dateKey}:${daysLeft}`,
+        urgency: daysLeft <= 1 ? 4 : 2,
+        title: daysLeft === 0 ? 'Today' : 'Assessment coming up',
+        body: daysLeft === 0 ? `${label} is today. Good luck!` : `${label} is in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildCandidates(state, dateKey, minutesNow) {
+  const candidates = [
+    ...classCandidates(state, dateKey, minutesNow),
+    ...assignmentCandidates(state, dateKey),
+    ...assessmentCandidates(state, dateKey),
+  ];
 
   getNeglectedSubjects(state, 7, dateKey).slice(0, 1).forEach(({ subject }) => {
     candidates.push({
@@ -97,11 +169,11 @@ export function tick(referenceState = getState(), dateKey = todayKey()) {
 
   const todayEntry = getTodayLog(state, dateKey);
   const countToday = todayEntry ? todayEntry.count : 0;
-  if (countToday >= MAX_PER_DAY) return null;
-
   const notifiedKeys = new Set(todayEntry ? todayEntry.notifiedKeys : []);
   const minutesNow = minutesFromHHMM(nowHHMM());
-  const candidate = buildCandidates(state, dateKey, minutesNow).find((c) => !notifiedKeys.has(c.key));
+
+  const candidate = buildCandidates(state, dateKey, minutesNow)
+    .find((c) => !notifiedKeys.has(c.key) && (c.exemptFromCap || countToday < MAX_PER_DAY));
   if (!candidate) return null;
 
   fire(candidate.title, candidate.body);

@@ -1,11 +1,13 @@
 # Digital Timetable
 
-A calm, offline-first class timetable and study companion PWA. Plan subjects
-and sessions, review with spaced repetition, focus with a Pomodoro timer, and
-see real progress — all backed by a heuristic (no external API) study coach.
+A calm, offline-first class timetable and academic planner PWA. Its mission:
+help students never miss a class, assignment, or exam. Plan your timetable,
+track assignments and assessments per subject, review with spaced repetition,
+focus with a Pomodoro timer, and see real progress — all backed by a
+heuristic (no external API) Academic Planner.
 
 On first run the app is pre-loaded with a real class timetable (see
-`js/core/seedTimetable.js`) — edit or delete it in Planner like any other
+`js/core/seedTimetable.js`) — edit or delete it in Timetable like any other
 data, or reset it entirely from Settings.
 
 ---
@@ -24,23 +26,64 @@ Open `http://localhost:8000`. No build step — plain ES modules loaded natively
 
 ## ✅ Features
 
-- **🏠 Dashboard** — today's plan, next session, daily goal ring, streak, focus time, and top AI recommendations.
-- **🗓️ Planner** — subjects, topics, one-off or recurring sessions, exams.
-- **🍅 Focus** — configurable Pomodoro (focus/break/long break) with a 7-day focus history.
-- **📚 Learning Hub** — per-subject notes, flashcards with spaced repetition (SM-2), and quizzes generated from your own flashcards.
-- **📈 Progress** — study trend, completion rate, per-subject performance, and weak-area flags.
-- **✨ AI Study Coach** — a rule-based engine (not a hosted LLM — see below) that surfaces neglected subjects, due reviews, upcoming exams, and one contextual tip a day.
-- **🔔 Smart notifications** — capped at 3/day, deduplicated per item, quiet-hours aware. Requires explicit permission from Settings.
-- **⚡ Offline-first** — service worker precaches the full app shell; all data lives in `localStorage` with an automatic rolling backup.
-- **🌗 Theme** — light/dark/system, plus data export/import/reset in Settings.
-- **🔄 Google Drive sync** *(optional)* — sign in to sync your timetable to your own Google Drive (minimal `drive.appdata` scope only) and pick it up on another device, with timestamp-based conflict resolution and retry-with-backoff. Fully optional and works out of the box; the app is completely offline-capable without it. See below.
+Three bottom-nav destinations, plus two contextual screens launched from
+within them:
+
+- **🏠 Today** — a next-class hero card with a live countdown, the rest of
+  today's classes, everything due soon (assignments + assessments merged
+  and sorted), and one top suggestion from the Academic Planner.
+- **🗓️ Timetable** — a Monday-aligned week strip plus a day agenda combining
+  classes, assignment due dates, and assessments on that day. Add one-off or
+  weekly-recurring classes with room/lecturer.
+- **📚 Subject Workspace** — the per-subject home: Overview, Classes,
+  Assignments, Assessments, Notes, Flashcards (+ generated quizzes), and
+  History, all in one tabbed screen instead of scattered across separate
+  views.
+- **🍅 Focus** *(contextual, launched from a subject's "Prepare now")* —
+  configurable Pomodoro (focus/break/long break) with a 7-day focus history.
+- **📈 Progress** *(contextual, launched from a subject's History tab)* —
+  study trend, completion rate, per-subject performance, and weak-area
+  flags.
+- **✨ Academic Planner** — a rule-based engine (not a hosted LLM — see
+  below) that ranks by urgency across next class, most-urgent assignment,
+  exam revision (cross-referenced against real flashcard mastery),
+  neglected subjects, and workload clustering.
+- **🔔 Tiered notifications** — classes get 1-day/1-hour/10-minute reminders
+  (the 10-minute tier is exempt from the daily cap — missing a class is the
+  whole point), assignments get an effort-scaled lead reminder plus 3-day/
+  1-day/day-of, assessments get 1-week/3-day/1-day/day-of. Deduplicated per
+  item, quiet-hours aware, requires explicit permission from Settings.
+- **📅 Calendar export (.ics)** — download every class, assignment, and
+  assessment as a standard calendar file and import it into Google
+  Calendar, Apple Calendar, or Outlook — the reliability backstop for
+  reminders a browser tab can't deliver in the background. Settings →
+  Calendar sync.
+- **⚡ Offline-first** — service worker precaches the full app shell; all
+  data lives in `localStorage` with an automatic rolling backup.
+- **🌗 Theme** — light/dark/system, plus data export/import/reset in
+  Settings.
+- **🔄 Google Drive sync** *(optional)* — sign in to sync your timetable to
+  your own Google Drive (minimal `drive.appdata` scope only) and pick it up
+  on another device, with timestamp-based conflict resolution and
+  retry-with-backoff. Fully optional and works out of the box; the app is
+  completely offline-capable without it. See below.
 
 ### About the "AI"
-There's no external API call and no network dependency — the coach is
-heuristic logic over your real data (due dates, completion rates, ease
-factors, streaks). This keeps the app fully offline, free, instant, and
-free of any client-side API-key exposure. It recommends *what* and *when*
-to study; it doesn't generate original explanations of subject content.
+There's no external API call and no network dependency — the Academic
+Planner is heuristic logic over your real data (due dates, weights, ease
+factors, completion rates). This keeps the app fully offline, free,
+instant, and free of any client-side API-key exposure. It recommends *what*
+and *when* to study; it doesn't generate original explanations of subject
+content.
+
+### Assignments vs. Assessments
+Two distinct entities, on purpose — they have different urgency curves and
+different reminder shapes. An **Assignment** is work you produce and submit
+by a deadline (homework, project, essay, lab, reading), with a status
+workflow (not started → in progress → submitted → graded) and a derived
+priority (from days left, weight, and subject priority — overridable). An
+**Assessment** is something you sit down for at a specific time (quiz,
+test, exam, practical), optionally timed, with its own reminder tiers.
 
 ---
 
@@ -66,17 +109,19 @@ Izatime/
 │   │   └── id.js                 UUID helper
 │   ├── services/
 │   │   ├── scheduler.js          recurring/one-off session expansion
+│   │   ├── assignments.js        assignment/assessment queries, derived priority
 │   │   ├── spacedRepetition.js   SM-2 algorithm for topics & flashcards
-│   │   ├── aiCoach.js            recommendations, daily tip, quiz generation
+│   │   ├── aiCoach.js            Academic Planner recommendations, quiz generation
 │   │   ├── analytics.js          study minutes, completion rate, weak areas
 │   │   ├── focusTimer.js         Pomodoro state machine
-│   │   ├── notifications.js      capped/deduped/quiet-hours notification rules
+│   │   ├── notifications.js      tiered, deduped, quiet-hours-aware reminders
+│   │   ├── icsExport.js          RFC5545 calendar (.ics) export
 │   │   ├── csvImport.js          bulk timetable import from CSV
 │   │   ├── googleAuth.js         Google Identity Services sign-in/token
 │   │   ├── driveSync.js          Drive appDataFolder file read/write
 │   │   └── googleSync.js         orchestrates sign-in, pull-or-seed, auto-push
 │   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js
-│   └── views/                    dashboard.js, planner.js, focus.js, learningHub.js, analyticsView.js, settings.js
+│   └── views/                    dashboard.js (Today), timetable.js, subjectWorkspace.js, focus.js, analyticsView.js, settings.js
 └── icons/                       PWA icons (72px–512px)
 ```
 
@@ -182,10 +227,11 @@ Leaving the field blank reverts to the built-in Client ID.
 
 ## ✏️ Customization
 
-- **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, notes, flashcards, quizzes, exams, and focus sessions.
+- **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, assignments, assessments, notes, flashcards, quizzes, and focus sessions.
 - **Styling**: change tokens in `css/base.css` (`:root` custom properties) to re-theme the whole app.
-- **Notification rules**: tune caps/quiet-hours logic in `js/services/notifications.js`.
+- **Notification rules**: tune tiers/caps/quiet-hours logic in `js/services/notifications.js`.
 - **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
+- **Calendar export**: tune reminder framing or add new entity types to `js/services/icsExport.js`.
 
 ---
 

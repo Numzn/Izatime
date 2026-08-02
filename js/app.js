@@ -7,14 +7,18 @@ import { iconMarkup } from './components/icons.js';
 import { escapeHtml } from './components/dom.js';
 
 import * as dashboard from './views/dashboard.js';
-import * as planner from './views/planner.js';
+import * as timetable from './views/timetable.js';
+import * as subjects from './views/subjectWorkspace.js';
 import * as focus from './views/focus.js';
-import * as hub from './views/learningHub.js';
 import * as analyticsView from './views/analyticsView.js';
 import * as settings from './views/settings.js';
 
+// dashboard/timetable/subjects are the three bottom-nav destinations
+// (components/nav.js). focus and progress are still real, reachable
+// routes — just never nav-bar peers; they're launched contextually
+// ("Prepare now" from a subject, "History" from within a workspace).
 const VIEWS = {
-  dashboard, planner, focus, hub, progress: analyticsView, settings,
+  dashboard, timetable, subjects, focus, progress: analyticsView, settings,
 };
 
 let currentRoute = 'dashboard';

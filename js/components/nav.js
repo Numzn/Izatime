@@ -1,11 +1,14 @@
 import { iconMarkup } from './icons.js';
 
+// Only three peers in the bottom nav, on purpose: Today answers "what do I
+// need to do," Timetable answers "what does my week look like," Subjects
+// holds everything about one class. Focus and Progress are still reachable
+// (see app.js's VIEWS map) but only as contextual destinations launched
+// from within those three, never as nav-bar peers competing for attention.
 export const ROUTES = [
   { id: 'dashboard', label: 'Today', icon: 'home' },
-  { id: 'planner', label: 'Planner', icon: 'calendar' },
-  { id: 'focus', label: 'Focus', icon: 'timer' },
-  { id: 'hub', label: 'Hub', icon: 'book' },
-  { id: 'progress', label: 'Progress', icon: 'trending-up' },
+  { id: 'timetable', label: 'Timetable', icon: 'calendar' },
+  { id: 'subjects', label: 'Subjects', icon: 'book' },
 ];
 
 export function renderNav(container, activeId, onNavigate) {
