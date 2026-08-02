@@ -3,7 +3,7 @@ import {
 } from '../core/dates.js';
 import { mutate } from '../core/store.js';
 import {
-  createSubject, createAssignment, createAssessment, createNote, createFlashcard,
+  createSubject, createAssignment, createAssessment, createNote, createFlashcard, createResource,
   createChecklistItem, SUBJECT_COLORS, ASSIGNMENT_TYPES, ASSIGNMENT_STATUSES,
 } from '../core/models.js';
 import { getSessionsForDate, toggleCompletion } from '../services/scheduler.js';
@@ -25,6 +25,7 @@ const TABS = [
   { id: 'assignments', label: 'Assignments', icon: 'edit' },
   { id: 'assessments', label: 'Assessments', icon: 'help-circle' },
   { id: 'notes', label: 'Notes', icon: 'notebook' },
+  { id: 'resources', label: 'Resources', icon: 'link' },
   { id: 'flashcards', label: 'Cards', icon: 'layers' },
   { id: 'history', label: 'History', icon: 'trending-up' },
 ];
@@ -221,12 +222,13 @@ function openSubjectForm(existing) {
       variant: 'danger',
       onClick: async (close) => {
         close();
-        const ok = await confirmModal({ message: `Delete "${existing.name}" and everything in it — classes, assignments, assessments, notes, and flashcards?` });
+        const ok = await confirmModal({ message: `Delete "${existing.name}" and everything in it — classes, assignments, assessments, notes, resources, and flashcards?` });
         if (!ok) return;
         mutate((s) => {
           s.subjects = s.subjects.filter((x) => x.id !== existing.id);
           s.sessions = s.sessions.filter((x) => x.subjectId !== existing.id);
           s.notes = s.notes.filter((x) => x.subjectId !== existing.id);
+          s.resources = s.resources.filter((x) => x.subjectId !== existing.id);
           s.flashcards = s.flashcards.filter((x) => x.subjectId !== existing.id);
           s.quizzes = s.quizzes.filter((x) => x.subjectId !== existing.id);
           s.assessments = s.assessments.filter((x) => x.subjectId !== existing.id);
@@ -435,6 +437,46 @@ function openNoteForm(subjectId, existing) {
     });
   }
   openModal({ title: existing ? 'Edit note' : 'New note', bodyNode: body, actions });
+}
+
+function openResourceForm(subjectId, existing) {
+  const titleInput = textInput(existing?.title || '', 'e.g. Lecture slides — Week 3');
+  const urlInput = textInput(existing?.url || '', 'https://...');
+  const body = document.createElement('div');
+  body.appendChild(field('Title', titleInput));
+  body.appendChild(field('Link (optional)', urlInput));
+
+  const actions = [
+    { label: 'Cancel', variant: 'ghost', onClick: (c) => c() },
+    {
+      label: 'Save',
+      variant: 'primary',
+      onClick: (close) => {
+        const title = titleInput.value.trim();
+        if (!title) { showToast('Enter a title'); return; }
+        mutate((s) => {
+          if (existing) {
+            Object.assign(s.resources.find((r) => r.id === existing.id), { title, url: urlInput.value.trim() });
+          } else {
+            s.resources.push(createResource({ subjectId, title, url: urlInput.value.trim() }));
+          }
+        });
+        close();
+      },
+    },
+  ];
+  if (existing) {
+    actions.splice(1, 0, {
+      label: 'Delete',
+      variant: 'danger',
+      onClick: async (close) => {
+        close();
+        if (!(await confirmModal({ message: `Delete "${existing.title}"?` }))) return;
+        mutate((s) => { s.resources = s.resources.filter((r) => r.id !== existing.id); });
+      },
+    });
+  }
+  openModal({ title: existing ? 'Edit resource' : 'New resource', bodyNode: body, actions });
 }
 
 function openFlashcardForm(subjectId, existing) {
@@ -698,6 +740,23 @@ function renderNotes(state, subject) {
   `;
 }
 
+function renderResources(state, subject) {
+  const resources = state.resources.filter((r) => r.subjectId === subject.id);
+  return `
+    <div class="section-header"><h2>Resources</h2><button class="btn-chip" data-action="add-resource">+ Add</button></div>
+    ${resources.length ? `<div class="note-list">${resources.map((r) => `
+      <div class="note-card resource-row">
+        ${r.url ? `
+          <a class="resource-open" href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">
+            <span class="note-title">${escapeHtml(r.title)}</span>
+            <span class="note-preview">${escapeHtml(r.url)}</span>
+          </a>
+        ` : `<span class="resource-open"><span class="note-title">${escapeHtml(r.title)}</span></span>`}
+        <button class="resource-edit" data-edit-resource="${r.id}" aria-label="Edit resource">${iconMarkup('edit', { size: 13 })}</button>
+      </div>`).join('')}</div>` : '<p class="empty-state-inline">No resources yet — add a link to slides, past papers, or readings.</p>'}
+  `;
+}
+
 function renderFlashcards(state, subject) {
   const cards = state.flashcards.filter((c) => c.subjectId === subject.id);
   const dueCount = getDueFlashcards(state).filter((c) => c.subjectId === subject.id).length;
@@ -754,7 +813,7 @@ export function render(container, { state, params, navigate }) {
   const subject = state.subjects.find((s) => s.id === viewState.subjectId);
 
   const tabContent = {
-    overview: renderOverview, classes: renderClasses, assignments: renderAssignments, assessments: renderAssessments, notes: renderNotes, flashcards: renderFlashcards, history: renderHistory,
+    overview: renderOverview, classes: renderClasses, assignments: renderAssignments, assessments: renderAssessments, notes: renderNotes, resources: renderResources, flashcards: renderFlashcards, history: renderHistory,
   }[viewState.tab](state, subject);
 
   container.innerHTML = `
@@ -800,6 +859,9 @@ export function render(container, { state, params, navigate }) {
 
   delegate(container, 'click', '[data-action="add-note"]', () => openNoteForm(subject.id, null));
   delegate(container, 'click', '[data-edit-note]', (e, t) => openNoteForm(subject.id, state.notes.find((n) => n.id === t.dataset.editNote)));
+
+  delegate(container, 'click', '[data-action="add-resource"]', () => openResourceForm(subject.id, null));
+  delegate(container, 'click', '[data-edit-resource]', (e, t) => openResourceForm(subject.id, state.resources.find((r) => r.id === t.dataset.editResource)));
 
   delegate(container, 'click', '[data-action="add-card"]', () => openFlashcardForm(subject.id, null));
   delegate(container, 'click', '[data-edit-card]', (e, t) => openFlashcardForm(subject.id, state.flashcards.find((c) => c.id === t.dataset.editCard)));

@@ -157,7 +157,7 @@ export function importTimetableICS(state, icsText) {
       room: event.location || '',
       lecturer: event.lecturer || '',
       recurrence: parseRRule(event.rrule),
-    }));
+    }, state));
     ctx.result.imported += 1;
   });
 
