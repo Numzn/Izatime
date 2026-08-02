@@ -74,6 +74,12 @@ within them:
   contexts). Settings has a "Send test notification" button that reports
   honestly if display actually failed, to confirm permission and this
   behavior on your device.
+- **📳 Vibration** — reminders vibrate the device directly (via the
+  Vibration API, not just the notification's own vibrate option, which is
+  inconsistently honored) alongside a few meaningful in-app moments:
+  checking off a class, a focus or break timer finishing, a flashcard
+  review deck completed. One toggle in Settings → Notifications turns all
+  of it off if you'd rather it stayed quiet.
 - **📅 Calendar export (.ics)** — download every class, assignment, and
   assessment as a standard calendar file and import it into Google
   Calendar, Apple Calendar, or Outlook — the reliability backstop for
@@ -165,6 +171,7 @@ Izatime/
 │   │   ├── analytics.js          study minutes, completion rate, weak areas
 │   │   ├── focusTimer.js         Pomodoro state machine
 │   │   ├── notifications.js      tiered, deduped, quiet-hours-aware reminders
+│   │   ├── haptics.js            Vibration API wrapper + shared patterns
 │   │   ├── icsExport.js          RFC5545 calendar (.ics) export
 │   │   ├── icsImport.js          RFC5545 calendar (.ics) import
 │   │   ├── csvImport.js          bulk timetable import from CSV
@@ -286,6 +293,7 @@ Leaving the field blank reverts to the built-in Client ID.
 - **Calendar export**: tune reminder framing or add new entity types to `js/services/icsExport.js`.
 - **Timetable import**: subject-matching and lecturer/session creation live in `js/services/timetableImport.js`, shared by both `csvImport.js` and `icsImport.js` — change it once, both formats pick it up.
 - **Free study periods**: tune the minimum gap size or the day's start/end bounds in `js/services/freeTime.js`.
+- **Vibration patterns**: tune or add patterns in the `PATTERNS` object in `js/services/haptics.js`.
 
 ---
 

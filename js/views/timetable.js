@@ -7,6 +7,7 @@ import { getAssignmentsDueOn, getAssessmentsOn } from '../services/assignments.j
 import { escapeHtml, delegate } from '../components/dom.js';
 import { openSessionForm } from '../components/sessionForm.js';
 import { iconMarkup } from '../components/icons.js';
+import { vibrate, PATTERNS } from '../services/haptics.js';
 
 const TYPE_ICON = { school: 'graduation-cap', study: 'book', 'exam-prep': 'file-text' };
 const ASSESSMENT_KIND_LABEL = { quiz: 'Quiz', test: 'Test', exam: 'Exam', practical: 'Practical' };
@@ -206,5 +207,6 @@ export function render(container, { state, navigate }) {
       const session = s.sessions.find((x) => x.id === t.dataset.toggleSession);
       if (session) toggleCompletion(session, viewState.selectedDate);
     });
+    if (t.checked && state.settings.hapticsEnabled !== false) vibrate(PATTERNS.confirm);
   });
 }

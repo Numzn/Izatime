@@ -18,6 +18,7 @@ import { openSessionForm } from '../components/sessionForm.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
+import { vibrate, PATTERNS } from '../services/haptics.js';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: 'home' },
@@ -550,7 +551,11 @@ function openReviewSession(state, subjectId) {
       });
       index += 1;
       showingBack = false;
-      if (index >= queue.length) { close(); showToast('Review complete'); } else draw();
+      if (index >= queue.length) {
+        close();
+        if (state.settings.hapticsEnabled !== false) vibrate(PATTERNS.success);
+        showToast('Review complete');
+      } else draw();
     });
     ratingRow.appendChild(btn);
   });
