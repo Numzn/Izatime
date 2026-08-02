@@ -96,7 +96,7 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     });
   }
 
-  const upcomingExams = state.exams
+  const upcomingExams = state.assessments
     .filter((e) => diffInDays(referenceKey, e.date) >= 0 && diffInDays(referenceKey, e.date) <= 7)
     .sort((a, b) => a.date.localeCompare(b.date));
   if (upcomingExams.length) {

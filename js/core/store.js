@@ -55,6 +55,26 @@ function migrate(candidate) {
   const migrated = { ...defaultState(), ...candidate };
   migrated.settings = { ...defaultState().settings, ...(candidate.settings || {}) };
   migrated.streak = candidate.streak || defaultState().streak;
+
+  // Pre-Phase-1 data used a plain "exam" entity; assessments generalize it
+  // with a kind (quiz/test/exam/practical). Carry old exams forward instead
+  // of silently orphaning them under a field nothing reads anymore.
+  if (Array.isArray(candidate.exams) && !Array.isArray(candidate.assessments)) {
+    migrated.assessments = candidate.exams.map((exam) => ({
+      id: exam.id,
+      subjectId: exam.subjectId,
+      name: exam.name,
+      date: exam.date,
+      startTime: null,
+      kind: 'exam',
+      weight: null,
+      topicIds: exam.topicIds || [],
+      checklist: [],
+      createdAt: exam.createdAt,
+    }));
+  }
+  delete migrated.exams;
+
   migrated.version = SCHEMA_VERSION;
   return migrated;
 }

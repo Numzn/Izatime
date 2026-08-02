@@ -56,7 +56,7 @@ function buildCandidates(state, dateKey, minutesNow) {
     }
   });
 
-  state.exams
+  state.assessments
     .filter((e) => diffInDays(dateKey, e.date) >= 0 && diffInDays(dateKey, e.date) <= 2)
     .forEach((exam) => {
       const daysLeft = diffInDays(dateKey, exam.date);
