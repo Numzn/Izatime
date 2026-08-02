@@ -95,7 +95,7 @@ function initApp() {
     console.error('App failed to start:', error);
     document.body.innerHTML = `
       <div class="fatal-error">
-        <h2>${iconMarkup('alert-triangle', { size: 20 })}Iza:time couldn't start</h2>
+        <h2>${iconMarkup('alert-triangle', { size: 20 })}Digital Timetable couldn't start</h2>
         <p>Please refresh the page. Your saved data is untouched.</p>
         <button onclick="location.reload()">Refresh</button>
       </div>`;

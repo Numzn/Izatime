@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iza-time-v2.1';
+const CACHE_NAME = 'digital-timetable-v2.2';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   './js/core/events.js',
   './js/core/models.js',
   './js/core/store.js',
+  './js/core/seedTimetable.js',
   './js/services/scheduler.js',
   './js/services/spacedRepetition.js',
   './js/services/analytics.js',

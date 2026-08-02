@@ -41,6 +41,7 @@ export function createSession({
   durationMinutes = 30,
   priority = 2,
   recurrence = null,
+  lecturer = '',
 }) {
   return {
     id: createId(),
@@ -53,6 +54,7 @@ export function createSession({
     durationMinutes,
     priority,
     recurrence,
+    lecturer,
     completions: [],
     createdAt: new Date().toISOString(),
   };
