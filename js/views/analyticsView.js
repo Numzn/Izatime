@@ -12,7 +12,7 @@ export function render(container, { state }) {
   const trend = getTrend(state, viewState.days);
   const totalMinutes = trend.reduce((sum, t) => sum + t.minutes, 0);
   const completion = getCompletionRate(state, viewState.days);
-  const performance = getSubjectPerformance(state, viewState.days).filter((p) => p.sessionsTotal > 0 || p.topicsTotal > 0);
+  const performance = getSubjectPerformance(state, viewState.days).filter((p) => p.sessionsTotal > 0);
   const weakAreas = getWeakAreas(state, viewState.days);
 
   container.innerHTML = `
@@ -51,7 +51,7 @@ export function render(container, { state }) {
                 <span class="perf-pct">${p.completionPct === null ? '—' : `${p.completionPct}%`}</span>
               </div>
               <div class="perf-bar-track"><div class="perf-bar-fill" style="width:${p.completionPct || 0}%;background:${p.subject.color}"></div></div>
-              <div class="perf-meta">${p.topicsMastered}/${p.topicsTotal} topics mastered${p.avgQuizScore !== null ? ` · Quiz avg ${p.avgQuizScore}%` : ''}</div>
+              ${p.avgQuizScore !== null ? `<div class="perf-meta">Quiz avg ${p.avgQuizScore}%</div>` : ''}
             </div>
           `).join('')}
         </div>

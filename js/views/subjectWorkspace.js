@@ -1,10 +1,10 @@
 import {
-  todayKey, WEEK_ORDER, diffInDays, addDays, minutesFromHHMM, nowHHMM,
+  todayKey, diffInDays, addDays, minutesFromHHMM, nowHHMM,
 } from '../core/dates.js';
 import { mutate } from '../core/store.js';
 import {
-  createSubject, createSession, createAssignment, createAssessment, createNote, createFlashcard,
-  SUBJECT_COLORS, ASSIGNMENT_TYPES, ASSIGNMENT_STATUSES,
+  createSubject, createAssignment, createAssessment, createNote, createFlashcard,
+  createChecklistItem, SUBJECT_COLORS, ASSIGNMENT_TYPES, ASSIGNMENT_STATUSES,
 } from '../core/models.js';
 import { getSessionsForDate, toggleCompletion } from '../services/scheduler.js';
 import { masteryLabel, review, getDueFlashcards } from '../services/spacedRepetition.js';
@@ -14,6 +14,7 @@ import {
 import { getSubjectPerformance } from '../services/analytics.js';
 import { generateQuiz } from '../services/aiCoach.js';
 import { escapeHtml, delegate, clear } from '../components/dom.js';
+import { openSessionForm } from '../components/sessionForm.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
@@ -69,6 +70,71 @@ function textArea(value = '', placeholder = '') {
   const t = document.createElement('textarea');
   t.value = value; t.placeholder = placeholder; t.rows = 4;
   return t;
+}
+
+function checklistEditor(existingItems) {
+  const items = (existingItems || []).map((item) => ({ ...item }));
+
+  const wrap = document.createElement('div');
+  wrap.className = 'form-field';
+  const label = document.createElement('span');
+  label.textContent = 'Checklist (optional)';
+  wrap.appendChild(label);
+
+  const list = document.createElement('div');
+  list.className = 'checklist-editor';
+  wrap.appendChild(list);
+
+  function draw() {
+    list.innerHTML = '';
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'checklist-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = item.done;
+      cb.addEventListener('change', () => { item.done = cb.checked; row.classList.toggle('done', item.done); });
+      const span = document.createElement('span');
+      span.className = 'checklist-text';
+      span.textContent = item.text;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'checklist-remove';
+      del.innerHTML = iconMarkup('x', { size: 12 });
+      del.addEventListener('click', () => {
+        items.splice(items.indexOf(item), 1);
+        draw();
+      });
+      row.classList.toggle('done', item.done);
+      row.appendChild(cb);
+      row.appendChild(span);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  draw();
+
+  const addRow = document.createElement('div');
+  addRow.className = 'checklist-add-row';
+  const addInput = textInput('', 'Add a step...');
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-chip';
+  addBtn.textContent = '+ Add';
+  const commit = () => {
+    const text = addInput.value.trim();
+    if (!text) return;
+    items.push(createChecklistItem({ text }));
+    addInput.value = '';
+    draw();
+  };
+  addBtn.addEventListener('click', commit);
+  addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  wrap.appendChild(addRow);
+
+  return { node: wrap, getItems: () => items };
 }
 
 function selectInput(options, value) {
@@ -159,7 +225,6 @@ function openSubjectForm(existing) {
         if (!ok) return;
         mutate((s) => {
           s.subjects = s.subjects.filter((x) => x.id !== existing.id);
-          s.topics = s.topics.filter((x) => x.subjectId !== existing.id);
           s.sessions = s.sessions.filter((x) => x.subjectId !== existing.id);
           s.notes = s.notes.filter((x) => x.subjectId !== existing.id);
           s.flashcards = s.flashcards.filter((x) => x.subjectId !== existing.id);
@@ -176,126 +241,13 @@ function openSubjectForm(existing) {
   openModal({ title: existing ? 'Edit subject' : 'New subject', bodyNode: body, actions });
 }
 
-// ---- Class (session) form ----
-function openSessionForm(subjectId, existing) {
-  const titleInput = textInput(existing?.title || '', 'e.g. Algebra practice');
-  const typeSelect = selectInput(
-    Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label })),
-    existing?.type || 'school',
-  );
-  const dateInput = document.createElement('input');
-  dateInput.type = 'date';
-  dateInput.value = existing?.date || todayKey();
-
-  const timeInput = document.createElement('input');
-  timeInput.type = 'time';
-  timeInput.value = existing?.startTime || '09:00';
-
-  const durationInput = numberInput(String(existing?.durationMinutes || 60));
-  durationInput.step = '5';
-
-  const roomInput = textInput(existing?.room || '', 'e.g. Room 204');
-  const lecturerInput = textInput(existing?.lecturer || '', 'e.g. Priyah Mohan (Ms)');
-
-  const prioritySelect = selectInput([
-    { value: '1', label: 'Low' }, { value: '2', label: 'Normal' }, { value: '3', label: 'High' },
-  ], String(existing?.priority || 2));
-
-  const repeatToggle = document.createElement('input');
-  repeatToggle.type = 'checkbox';
-  repeatToggle.checked = !!existing?.recurrence;
-
-  const dayRow = document.createElement('div');
-  dayRow.className = 'weekday-picker';
-  const selectedDays = new Set(existing?.recurrence?.days || []);
-  WEEK_ORDER.forEach((code) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `weekday-btn${selectedDays.has(code) ? ' selected' : ''}`;
-    btn.textContent = code[0];
-    btn.title = code;
-    btn.addEventListener('click', () => {
-      if (selectedDays.has(code)) selectedDays.delete(code); else selectedDays.add(code);
-      btn.classList.toggle('selected');
-    });
-    dayRow.appendChild(btn);
-  });
-  const untilInput = document.createElement('input');
-  untilInput.type = 'date';
-  untilInput.value = existing?.recurrence?.until || '';
-  dayRow.appendChild(untilInput);
-  const toggleRecurrenceUI = () => { dayRow.style.display = repeatToggle.checked ? 'flex' : 'none'; };
-  toggleRecurrenceUI();
-  repeatToggle.addEventListener('change', toggleRecurrenceUI);
-
-  const body = document.createElement('div');
-  body.appendChild(field('Title', titleInput));
-  body.appendChild(field('Type', typeSelect));
-  body.appendChild(field('Date', dateInput));
-  body.appendChild(field('Start time', timeInput));
-  body.appendChild(field('Duration (minutes)', durationInput));
-  body.appendChild(field('Room / location (optional)', roomInput));
-  body.appendChild(field('Lecturer (optional)', lecturerInput));
-  body.appendChild(field('Priority', prioritySelect));
-  const repeatLabel = field('Repeat weekly', repeatToggle);
-  repeatLabel.classList.add('form-field-inline');
-  body.appendChild(repeatLabel);
-  body.appendChild(dayRow);
-
-  const actions = [
-    { label: 'Cancel', variant: 'ghost', onClick: (close) => close() },
-    {
-      label: existing ? 'Save' : 'Add class',
-      variant: 'primary',
-      onClick: (close) => {
-        const title = titleInput.value.trim();
-        if (!title) { showToast('Enter a title'); return; }
-        const recurrence = repeatToggle.checked && selectedDays.size
-          ? { days: [...selectedDays], until: untilInput.value || null }
-          : null;
-
-        const payload = {
-          title,
-          subjectId,
-          type: typeSelect.value,
-          date: dateInput.value,
-          startTime: timeInput.value,
-          durationMinutes: Number(durationInput.value) || 30,
-          priority: Number(prioritySelect.value),
-          recurrence,
-          room: roomInput.value.trim(),
-          lecturer: lecturerInput.value.trim(),
-        };
-
-        mutate((s) => {
-          if (existing) Object.assign(s.sessions.find((x) => x.id === existing.id), payload);
-          else s.sessions.push(createSession(payload));
-        });
-        close();
-        showToast(existing ? 'Class updated' : 'Class added');
-      },
-    },
-  ];
-  if (existing) {
-    actions.splice(1, 0, {
-      label: 'Delete',
-      variant: 'danger',
-      onClick: async (close) => {
-        close();
-        const ok = await confirmModal({ message: `Delete "${existing.title}"?` });
-        if (!ok) return;
-        mutate((s) => { s.sessions = s.sessions.filter((x) => x.id !== existing.id); });
-        showToast('Class deleted');
-      },
-    });
-  }
-
-  openModal({ title: existing ? 'Edit class' : 'Add class', bodyNode: body, actions });
-}
-
 // ---- Assignment form ----
-function openAssignmentForm(subjectId, existing) {
+function openAssignmentForm(state, subjectId, existing) {
   const titleInput = textInput(existing?.title || '', 'e.g. Lab report 3');
+  const subjectSelect = selectInput(
+    state.subjects.map((s) => ({ value: s.id, label: s.name })),
+    existing?.subjectId || subjectId,
+  );
   const dueDateInput = document.createElement('input');
   dueDateInput.type = 'date';
   dueDateInput.value = existing?.dueDate || todayKey();
@@ -312,6 +264,7 @@ function openAssignmentForm(subjectId, existing) {
 
   const body = document.createElement('div');
   body.appendChild(field('Title', titleInput));
+  body.appendChild(field('Subject', subjectSelect));
   body.appendChild(field('Due date', dueDateInput));
   body.appendChild(field('Due time (optional)', dueTimeInput));
   body.appendChild(field('Type', typeSelect));
@@ -319,6 +272,8 @@ function openAssignmentForm(subjectId, existing) {
   body.appendChild(field('Weight (% of grade, optional)', weightInput));
   body.appendChild(field('Priority', priorityOverrideSelect));
   body.appendChild(field('Description', descInput));
+  const checklist = checklistEditor(existing?.checklist);
+  body.appendChild(checklist.node);
 
   let statusSelect = null;
   if (existing) {
@@ -336,7 +291,7 @@ function openAssignmentForm(subjectId, existing) {
         if (!title) { showToast('Enter a title'); return; }
         const payload = {
           title,
-          subjectId,
+          subjectId: subjectSelect.value,
           dueDate: dueDateInput.value,
           dueTime: dueTimeInput.value || null,
           type: typeSelect.value,
@@ -344,6 +299,7 @@ function openAssignmentForm(subjectId, existing) {
           weight: weightInput.value ? Number(weightInput.value) : null,
           priorityOverride: priorityOverrideSelect.value ? Number(priorityOverrideSelect.value) : null,
           description: descInput.value.trim(),
+          checklist: checklist.getItems(),
         };
         mutate((s) => {
           if (existing) {
@@ -375,8 +331,12 @@ function openAssignmentForm(subjectId, existing) {
 }
 
 // ---- Assessment form ----
-function openAssessmentForm(subjectId, existing) {
+function openAssessmentForm(state, subjectId, existing) {
   const nameInput = textInput(existing?.name || '', 'e.g. Mid-term exam');
+  const subjectSelect = selectInput(
+    state.subjects.map((s) => ({ value: s.id, label: s.name })),
+    existing?.subjectId || subjectId,
+  );
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
   dateInput.value = existing?.date || todayKey();
@@ -388,6 +348,7 @@ function openAssessmentForm(subjectId, existing) {
 
   const body = document.createElement('div');
   body.appendChild(field('Name', nameInput));
+  body.appendChild(field('Subject', subjectSelect));
   body.appendChild(field('Kind', kindSelect));
   body.appendChild(field('Date', dateInput));
   body.appendChild(field('Start time (optional)', timeInput));
@@ -402,7 +363,7 @@ function openAssessmentForm(subjectId, existing) {
         const name = nameInput.value.trim();
         if (!name) { showToast('Enter a name'); return; }
         const payload = {
-          subjectId,
+          subjectId: subjectSelect.value,
           name,
           date: dateInput.value,
           startTime: timeInput.value || null,
@@ -687,10 +648,11 @@ function renderAssignments(state, subject) {
     <div class="section-header"><h2>Assignments</h2><button class="btn-chip" data-action="add-assignment">+ Add</button></div>
     ${assignments.length ? `<div class="assignment-list">${assignments.map((a) => {
       const priority = computeAssignmentPriority(a, subject);
+      const checklistDone = a.checklist?.length ? `${a.checklist.filter((c) => c.done).length}/${a.checklist.length} steps` : '';
       return `<button class="assignment-row status-${a.status}" data-open-assignment="${a.id}">
         <span class="assignment-main">
           <span class="assignment-title">${escapeHtml(a.title)}</span>
-          <span class="assignment-meta">${ASSIGNMENT_TYPE_LABEL[a.type]} · Due ${a.dueDate}${a.weight ? ` · ${a.weight}%` : ''}</span>
+          <span class="assignment-meta">${ASSIGNMENT_TYPE_LABEL[a.type]} · Due ${a.dueDate}${a.weight ? ` · ${a.weight}%` : ''}${checklistDone ? ` · ${checklistDone}` : ''}</span>
         </span>
         <span class="badge badge-priority-${priority}">${ASSIGNMENT_STATUS_LABEL[a.status]}</span>
       </button>`;
@@ -755,7 +717,7 @@ function renderHistory(state, subject) {
     <div class="perf-row">
       <div class="perf-header"><span>Completion rate</span><span class="perf-pct">${perf.completionPct === null ? '—' : `${perf.completionPct}%`}</span></div>
       <div class="perf-bar-track"><div class="perf-bar-fill" style="width:${perf.completionPct || 0}%;background:${subject.color}"></div></div>
-      <div class="perf-meta">${perf.topicsMastered}/${perf.topicsTotal} topics mastered${perf.avgQuizScore !== null ? ` · Quiz avg ${perf.avgQuizScore}%` : ''}</div>
+      ${perf.avgQuizScore !== null ? `<div class="perf-meta">Quiz avg ${perf.avgQuizScore}%</div>` : ''}
     </div>
   `;
 }
@@ -814,14 +776,14 @@ export function render(container, { state, params, navigate }) {
   delegate(container, 'click', '[data-action="edit-subject"]', () => openSubjectForm(subject));
   delegate(container, 'click', '[data-action="prepare-now"]', () => navigate('focus', { subjectId: subject.id }));
 
-  delegate(container, 'click', '[data-action="add-class"]', () => openSessionForm(subject.id, null));
-  delegate(container, 'click', '[data-edit-class]', (e, t) => openSessionForm(subject.id, state.sessions.find((s) => s.id === t.dataset.editClass)));
+  delegate(container, 'click', '[data-action="add-class"]', () => openSessionForm(state, null, { subjectId: subject.id }));
+  delegate(container, 'click', '[data-edit-class]', (e, t) => openSessionForm(state, state.sessions.find((s) => s.id === t.dataset.editClass), { subjectId: subject.id }));
 
-  delegate(container, 'click', '[data-action="add-assignment"]', () => openAssignmentForm(subject.id, null));
-  delegate(container, 'click', '[data-open-assignment]', (e, t) => openAssignmentForm(subject.id, state.assignments.find((a) => a.id === t.dataset.openAssignment)));
+  delegate(container, 'click', '[data-action="add-assignment"]', () => openAssignmentForm(state, subject.id, null));
+  delegate(container, 'click', '[data-open-assignment]', (e, t) => openAssignmentForm(state, subject.id, state.assignments.find((a) => a.id === t.dataset.openAssignment)));
 
-  delegate(container, 'click', '[data-action="add-assessment"]', () => openAssessmentForm(subject.id, null));
-  delegate(container, 'click', '[data-open-assessment]', (e, t) => openAssessmentForm(subject.id, state.assessments.find((a) => a.id === t.dataset.openAssessment)));
+  delegate(container, 'click', '[data-action="add-assessment"]', () => openAssessmentForm(state, subject.id, null));
+  delegate(container, 'click', '[data-open-assessment]', (e, t) => openAssessmentForm(state, subject.id, state.assessments.find((a) => a.id === t.dataset.openAssessment)));
 
   delegate(container, 'click', '[data-action="add-note"]', () => openNoteForm(subject.id, null));
   delegate(container, 'click', '[data-edit-note]', (e, t) => openNoteForm(subject.id, state.notes.find((n) => n.id === t.dataset.editNote)));

@@ -66,11 +66,18 @@ within them:
   Calendar, Apple Calendar, or Outlook — the reliability backstop for
   reminders a browser tab can't deliver in the background. Settings →
   Calendar sync.
-- **📥 Calendar import (.ics)** — bring an existing calendar export (e.g. a
-  university-issued semester timetable) in the other direction: timed
-  events become classes, matched to an existing subject by name where
-  possible or grouped under an "Imported" subject, weekly recurrence
-  preserved. Settings → Timetable import.
+- **📥 Timetable import (CSV or .ics)** — the timetable is the single source
+  of truth: import it once and everything else — Today, the week and month
+  views, Subject Workspace, reminders, the Academic Planner — populates
+  itself from what got created, nothing re-entered. Both formats share one
+  subject-resolver: CSV's dedicated `subject` column matches by exact name;
+  an `.ics` event's free-text title matches by substring against your
+  existing subjects, or groups under an auto-created "Imported" subject if
+  nothing matches. `.ics` also picks up a lecturer from the `ORGANIZER`
+  field where the source calendar sets one. Weekly recurrence is preserved
+  either way. Finishing an import shows a summary of what was created, plus
+  a single tap to turn reminders on if permission hasn't been decided yet.
+  Settings → Timetable import.
 - **⚡ Offline-first** — service worker precaches the full app shell; all
   data lives in `localStorage` with an automatic rolling backup.
 - **🌗 Theme** — light/dark/system, plus data export/import/reset in
@@ -93,10 +100,19 @@ content.
 Two distinct entities, on purpose — they have different urgency curves and
 different reminder shapes. An **Assignment** is work you produce and submit
 by a deadline (homework, project, essay, lab, reading), with a status
-workflow (not started → in progress → submitted → graded) and a derived
-priority (from days left, weight, and subject priority — overridable). An
-**Assessment** is something you sit down for at a specific time (quiz,
-test, exam, practical), optionally timed, with its own reminder tiers.
+workflow (not started → in progress → submitted → graded), a derived
+priority (from days left, weight, and subject priority — overridable), and
+an optional checklist for breaking the work into steps. An **Assessment**
+is something you sit down for at a specific time (quiz, test, exam,
+practical), optionally timed, with its own reminder tiers.
+
+### One class, one form, everywhere
+Adding or editing a class always uses the same form — from Timetable, from
+a subject's Classes tab, wherever — and it always includes a subject
+picker. A class created under the wrong subject (by an import's best-effort
+matching, or by hand) can always be reassigned from any screen it's edited
+on, not just some of them. Assignments and Assessments carry the same
+subject picker for the same reason.
 
 ---
 
@@ -123,7 +139,7 @@ Izatime/
 │   ├── services/
 │   │   ├── scheduler.js          recurring/one-off session expansion
 │   │   ├── assignments.js        assignment/assessment queries, derived priority
-│   │   ├── spacedRepetition.js   SM-2 algorithm for topics & flashcards
+│   │   ├── spacedRepetition.js   SM-2 algorithm for flashcards
 │   │   ├── aiCoach.js            Academic Planner recommendations, quiz generation
 │   │   ├── analytics.js          study minutes, completion rate, weak areas
 │   │   ├── focusTimer.js         Pomodoro state machine
@@ -131,10 +147,11 @@ Izatime/
 │   │   ├── icsExport.js          RFC5545 calendar (.ics) export
 │   │   ├── icsImport.js          RFC5545 calendar (.ics) import
 │   │   ├── csvImport.js          bulk timetable import from CSV
+│   │   ├── timetableImport.js    subject-resolution shared by CSV + .ics import
 │   │   ├── googleAuth.js         Google Identity Services sign-in/token
 │   │   ├── driveSync.js          Drive appDataFolder file read/write
 │   │   └── googleSync.js         orchestrates sign-in, pull-or-seed, auto-push
-│   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js
+│   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js, sessionForm.js (shared add/edit-class form)
 │   └── views/                    dashboard.js (Today), timetable.js, subjectWorkspace.js, focus.js, analyticsView.js, settings.js
 └── icons/                       PWA icons (72px–512px)
 ```
@@ -241,12 +258,12 @@ Leaving the field blank reverts to the built-in Client ID.
 
 ## ✏️ Customization
 
-- **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, assignments, assessments, notes, flashcards, quizzes, and focus sessions.
+- **Data model**: see `js/core/models.js` for the shape of subjects, sessions, assignments, assessments, notes, flashcards, quizzes, and focus sessions.
 - **Styling**: change tokens in `css/base.css` (`:root` custom properties) to re-theme the whole app.
 - **Notification rules**: tune tiers/caps/quiet-hours logic in `js/services/notifications.js`.
 - **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
 - **Calendar export**: tune reminder framing or add new entity types to `js/services/icsExport.js`.
-- **Calendar import**: tune subject-matching or recurrence handling in `js/services/icsImport.js`.
+- **Timetable import**: subject-matching and lecturer/session creation live in `js/services/timetableImport.js`, shared by both `csvImport.js` and `icsImport.js` — change it once, both formats pick it up.
 
 ---
 

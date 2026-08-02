@@ -1,5 +1,5 @@
-import { createSubject, createSession } from '../core/models.js';
 import { todayKey } from '../core/dates.js';
+import { resolveSubject, createSessionFromRow, newImportContext } from './timetableImport.js';
 
 export const CSV_TEMPLATE_HEADER = 'subject,title,day,startTime,durationMinutes,lecturer,type,priority';
 
@@ -53,41 +53,35 @@ export function parseCSV(text) {
 
 export function importTimetableCSV(state, csvText) {
   const rows = parseCSV(csvText);
-  const result = { imported: 0, subjectsCreated: 0, skipped: [] };
+  const ctx = newImportContext();
 
   rows.forEach((row, index) => {
     const rowNumber = index + 2; // header is row 1
     const missing = REQUIRED.filter((key) => !row[key]);
     if (missing.length) {
-      result.skipped.push(`Row ${rowNumber}: missing ${missing.join(', ')}`);
+      ctx.result.skipped.push(`Row ${rowNumber}: missing ${missing.join(', ')}`);
       return;
     }
 
     const day = row.day.toUpperCase().slice(0, 3);
     if (!VALID_DAYS.includes(day)) {
-      result.skipped.push(`Row ${rowNumber}: invalid day "${row.day}" (use MON..SUN)`);
+      ctx.result.skipped.push(`Row ${rowNumber}: invalid day "${row.day}" (use MON..SUN)`);
       return;
     }
 
     const startTime = row.starttime;
     if (!/^\d{1,2}:\d{2}$/.test(startTime)) {
-      result.skipped.push(`Row ${rowNumber}: invalid start time "${row.starttime}" (use HH:MM)`);
+      ctx.result.skipped.push(`Row ${rowNumber}: invalid start time "${row.starttime}" (use HH:MM)`);
       return;
     }
 
-    let subject = state.subjects.find((s) => s.name.toLowerCase() === row.subject.toLowerCase());
-    if (!subject) {
-      subject = createSubject({ name: row.subject });
-      state.subjects.push(subject);
-      result.subjectsCreated += 1;
-    }
+    const subject = resolveSubject(state, { subjectHint: row.subject }, ctx);
 
     const type = VALID_TYPES.includes((row.type || '').toLowerCase()) ? row.type.toLowerCase() : 'school';
     const durationMinutes = Number(row.durationminutes) > 0 ? Number(row.durationminutes) : 60;
     const priority = [1, 2, 3].includes(Number(row.priority)) ? Number(row.priority) : 2;
 
-    state.sessions.push(createSession({
-      subjectId: subject.id,
+    state.sessions.push(createSessionFromRow(subject, {
       title: row.title,
       type,
       date: todayKey(),
@@ -97,8 +91,8 @@ export function importTimetableCSV(state, csvText) {
       recurrence: { days: [day], until: null },
       lecturer: row.lecturer || '',
     }));
-    result.imported += 1;
+    ctx.result.imported += 1;
   });
 
-  return result;
+  return ctx.result;
 }

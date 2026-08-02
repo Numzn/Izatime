@@ -1,6 +1,5 @@
 import { lastNDays, todayKey } from '../core/dates.js';
 import { getSessionsForDate } from './scheduler.js';
-import { masteryLabel } from './spacedRepetition.js';
 
 export function getFocusMinutesForDate(state, dateKey) {
   return state.focusSessions
@@ -54,9 +53,6 @@ export function getSubjectPerformance(state, days = 14, referenceKey = todayKey(
       done += entries.filter((e) => e.completed).length;
     });
 
-    const topics = state.topics.filter((t) => t.subjectId === subject.id);
-    const mastered = topics.filter((t) => masteryLabel(t.srs) === 'mastered').length;
-
     const quizzes = state.quizzes.filter((q) => q.subjectId === subject.id);
     const allAttempts = quizzes.flatMap((q) => q.attempts);
     const avgScore = allAttempts.length
@@ -68,8 +64,6 @@ export function getSubjectPerformance(state, days = 14, referenceKey = todayKey(
       sessionsTotal: total,
       sessionsDone: done,
       completionPct: total ? Math.round((done / total) * 100) : null,
-      topicsTotal: topics.length,
-      topicsMastered: mastered,
       avgQuizScore: avgScore,
     };
   });
@@ -93,16 +87,6 @@ export function getWeakAreas(state, days = 14, referenceKey = todayKey()) {
       });
     }
   });
-
-  state.topics
-    .filter((t) => t.srs.repetitions > 0 && t.srs.easeFactor < 2.0)
-    .forEach((t) => {
-      const subject = state.subjects.find((s) => s.id === t.subjectId);
-      weak.push({
-        type: 'topic', id: t.id, name: t.name,
-        reason: `${t.name}${subject ? ` (${subject.name})` : ''} keeps coming up hard in review`,
-      });
-    });
 
   return weak.slice(0, 6);
 }

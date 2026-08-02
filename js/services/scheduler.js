@@ -26,7 +26,13 @@ export function getSessionsForDate(state, dateKey, { type } = {}) {
   return state.sessions
     .filter((s) => occursOn(s, dateKey) && (!type || s.type === type))
     .map((s) => ({ session: s, completed: isCompletedOn(s, dateKey) }))
-    .sort((a, b) => minutesFromHHMM(a.session.startTime) - minutesFromHHMM(b.session.startTime));
+    // Same start time (a real clash) breaks the tie by priority, highest
+    // first — the one place the priority set on a class actually does
+    // something, instead of being saved and never read.
+    .sort((a, b) => (
+      minutesFromHHMM(a.session.startTime) - minutesFromHHMM(b.session.startTime)
+      || b.session.priority - a.session.priority
+    ));
 }
 
 export function getNextSession(state, { fromDateKey, fromMinutes = -1 } = {}) {
