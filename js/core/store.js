@@ -1,6 +1,7 @@
 import { defaultState, SCHEMA_VERSION } from './models.js';
 import { bus } from './events.js';
 import { addDays, todayKey } from './dates.js';
+import { seedTimetable } from './seedTimetable.js';
 
 const STORAGE_KEY = 'izatime:data';
 const BACKUP_KEY = 'izatime:backup';
@@ -109,7 +110,7 @@ export function loadStore() {
     return state;
   }
 
-  state = defaultState();
+  state = seedTimetable(defaultState());
   recomputeDerived(state);
   persist(state);
   return state;
@@ -139,7 +140,7 @@ export function exportJSON() {
 
 export function importJSON(text) {
   const parsed = JSON.parse(text);
-  if (!isValidState(parsed)) throw new Error('That file does not look like an Iza:time backup.');
+  if (!isValidState(parsed)) throw new Error('That file does not look like a Digital Timetable backup.');
   state = migrate(parsed);
   recomputeDerived(state);
   persist(state);

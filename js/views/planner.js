@@ -150,6 +150,8 @@ function openSessionForm(state, existing, defaults = {}) {
     { value: '1', label: 'Low' }, { value: '2', label: 'Normal' }, { value: '3', label: 'High' },
   ], String(existing?.priority || 2));
 
+  const lecturerInput = textInput(existing?.lecturer || '', 'e.g. Priyah Mohan (Ms)');
+
   const repeatToggle = document.createElement('input');
   repeatToggle.type = 'checkbox';
   repeatToggle.checked = !!existing?.recurrence;
@@ -180,6 +182,7 @@ function openSessionForm(state, existing, defaults = {}) {
   body.appendChild(field('Start time', timeInput));
   body.appendChild(field('Duration (minutes)', durationInput));
   body.appendChild(field('Priority', prioritySelect));
+  body.appendChild(field('Lecturer (optional)', lecturerInput));
   const repeatLabel = field('Repeat weekly', repeatToggle);
   repeatLabel.classList.add('form-field-inline');
   body.appendChild(repeatLabel);
@@ -209,6 +212,7 @@ function openSessionForm(state, existing, defaults = {}) {
               durationMinutes: Number(durationInput.value) || 30,
               priority: Number(prioritySelect.value),
               recurrence,
+              lecturer: lecturerInput.value.trim(),
             });
           } else {
             s.sessions.push(createSession({
@@ -220,6 +224,7 @@ function openSessionForm(state, existing, defaults = {}) {
               durationMinutes: Number(durationInput.value) || 30,
               priority: Number(prioritySelect.value),
               recurrence,
+              lecturer: lecturerInput.value.trim(),
             }));
           }
         });
@@ -359,7 +364,7 @@ export function render(container, { state, params }) {
               <span class="session-icon">${iconMarkup(TYPE_ICON[session.type] || 'book', { size: 15 })}</span>
               <span class="session-info" data-edit-session="${session.id}">
                 <span class="session-title">${escapeHtml(session.title)}${session.recurrence ? ` ${iconMarkup('repeat', { size: 11 })}` : ''}</span>
-                <span class="session-meta">${TYPE_LABEL[session.type]} · ${session.startTime} · ${session.durationMinutes}m</span>
+                <span class="session-meta">${TYPE_LABEL[session.type]} · ${session.startTime} · ${session.durationMinutes}m${session.lecturer ? ` · ${escapeHtml(session.lecturer)}` : ''}</span>
               </span>
             </div>
           `).join('')}

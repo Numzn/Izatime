@@ -1,8 +1,12 @@
-# Iza:time — AI Study Suite 🧠⏳
+# Digital Timetable
 
-A calm, offline-first study companion PWA. Plan subjects and sessions, review
-with spaced repetition, focus with a Pomodoro timer, and see real progress —
-all backed by a heuristic (no external API) study coach.
+A calm, offline-first class timetable and study companion PWA. Plan subjects
+and sessions, review with spaced repetition, focus with a Pomodoro timer, and
+see real progress — all backed by a heuristic (no external API) study coach.
+
+On first run the app is pre-loaded with a real class timetable (see
+`js/core/seedTimetable.js`) — edit or delete it in Planner like any other
+data, or reset it entirely from Settings.
 
 ---
 

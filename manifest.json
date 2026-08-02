@@ -1,7 +1,7 @@
 {
-  "name": "Iza:time · AI Study Suite",
-  "short_name": "Iza:time",
-  "description": "A calm, intelligent study companion: plan sessions, review with spaced repetition, focus with Pomodoro, and track real progress.",
+  "name": "Digital Timetable",
+  "short_name": "Timetable",
+  "description": "Your class timetable plus a calm study companion: spaced repetition review, focus timer, and real progress tracking.",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",

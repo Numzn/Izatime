@@ -62,7 +62,7 @@ export function render(container, { state, navigate }) {
         <div class="next-icon">${iconMarkup(TYPE_ICON[next.session.type] || 'book', { size: 18 })}</div>
         <div class="next-info">
           <div class="next-title">${escapeHtml(next.session.title)}</div>
-          <div class="next-meta">${escapeHtml(subjectName(state, next.session.subjectId))} · ${next.session.startTime}${next.dateKey !== dateKey ? ' · ' + next.dateKey : ''}</div>
+          <div class="next-meta">${escapeHtml(subjectName(state, next.session.subjectId))} · ${next.session.startTime}${next.session.lecturer ? ` · ${escapeHtml(next.session.lecturer)}` : ''}${next.dateKey !== dateKey ? ' · ' + next.dateKey : ''}</div>
         </div>
         <div class="next-chevron">${iconMarkup('chevron-right', { size: 16 })}</div>
       </button>
@@ -94,7 +94,7 @@ export function render(container, { state, navigate }) {
               <span class="session-icon">${iconMarkup(TYPE_ICON[session.type] || 'book', { size: 16 })}</span>
               <span class="session-info">
                 <span class="session-title">${escapeHtml(session.title)}</span>
-                <span class="session-meta">${escapeHtml(subjectName(state, session.subjectId))} · ${session.startTime}</span>
+                <span class="session-meta">${escapeHtml(subjectName(state, session.subjectId))} · ${session.startTime}${session.lecturer ? ` · ${escapeHtml(session.lecturer)}` : ''}</span>
               </span>
             </label>
           `).join('')}
