@@ -7,6 +7,7 @@ import { getNeglectedSubjects } from './aiCoach.js';
 import {
   getAssignmentsDueWithin, getUpcomingAssessments, isAssignmentDone, reminderLeadDays,
 } from './assignments.js';
+import { vibrate, PATTERNS } from './haptics.js';
 
 const MAX_PER_DAY = 3;
 const LOG_HISTORY = 14;
@@ -172,6 +173,7 @@ function buildCandidates(state, dateKey, minutesNow) {
 // particular) don't report success when it silently failed.
 async function fire(candidate) {
   const insistent = candidate.urgency >= 3 || candidate.exemptFromCap;
+  const pattern = insistent ? PATTERNS.insistent : PATTERNS.gentle;
   const options = {
     body: candidate.body,
     icon: 'icons/icon-192x192.png',
@@ -179,8 +181,13 @@ async function fire(candidate) {
     renotify: true,
     silent: false,
     requireInteraction: insistent,
-    vibrate: insistent ? [200, 100, 200, 100, 200] : [150],
+    vibrate: pattern,
   };
+  // The notification's own `vibrate` option only ever fires if the OS
+  // actually honors it for that delivery, which is inconsistent — calling
+  // the Vibration API directly is the more reliable path whenever the tab
+  // is open and visible, so this doesn't rely on that option alone.
+  if (getState().settings.hapticsEnabled !== false) vibrate(pattern);
   try {
     const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
     if (registration && registration.active) {

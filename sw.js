@@ -1,4 +1,4 @@
-const CACHE_NAME = 'digital-timetable-v3.6';
+const CACHE_NAME = 'digital-timetable-v3.7';
 const ASSETS = [
   './',
   './index.html',
@@ -25,6 +25,7 @@ const ASSETS = [
   './js/services/icsImport.js',
   './js/services/timetableImport.js',
   './js/services/freeTime.js',
+  './js/services/haptics.js',
   './js/services/assignments.js',
   './js/services/googleAuth.js',
   './js/services/driveSync.js',

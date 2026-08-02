@@ -5,6 +5,7 @@ import * as focusTimer from '../services/focusTimer.js';
 import { escapeHtml, delegate } from '../components/dom.js';
 import { barChart } from '../components/charts.js';
 import { showToast } from '../components/toast.js';
+import { vibrate, PATTERNS } from '../services/haptics.js';
 
 const PHASE_LABEL = { idle: 'Ready to focus', focus: 'Focus', break: 'Short break', longBreak: 'Long break' };
 
@@ -109,6 +110,7 @@ export function render(container, { state, params }) {
 
   unsubscribeTick = focusTimer.onTick(() => updateTimerDOM(container));
   unsubscribePhase = focusTimer.onPhaseComplete(({ phase, next }) => {
+    if (state.settings.hapticsEnabled !== false) vibrate(PATTERNS.success);
     if (phase === 'focus') showToast(next === 'longBreak' ? 'Focus block complete — long break time' : 'Focus block complete — short break');
     else showToast('Break over — ready when you are');
   });

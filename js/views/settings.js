@@ -235,6 +235,7 @@ export function render(container, { state, navigate }) {
       <label class="form-field-inline"><input type="checkbox" id="notifyAssessments" ${settings.notifyCategories.assessments ? 'checked' : ''}><span>Assessments</span></label>
       <label class="form-field-inline"><input type="checkbox" id="notifyNeglected" ${settings.notifyCategories.neglected ? 'checked' : ''}><span>Neglected subjects</span></label>
       <p class="settings-note" style="margin-top:14px">Time-critical reminders (a class starting soon, something due today) fire as "insistent" — they vibrate and stay on screen until dismissed. This is the strongest a web app can make a notification; it can't ring through your device's own silent mode or Do Not Disturb.</p>
+      <label class="form-field-inline"><input type="checkbox" id="setHaptics" ${settings.hapticsEnabled ? 'checked' : ''}><span>Vibration — reminders, and short taps for things like checking off a class or finishing a focus session</span></label>
       <div class="settings-actions">
         <button class="btn btn-ghost" data-action="test-notification">${iconMarkup('bell', { size: 15 })}Send test notification</button>
       </div>
@@ -421,6 +422,10 @@ export function render(container, { state, navigate }) {
     container.querySelector(selector).addEventListener('change', (e) => {
       mutate((s) => { s.settings.notifyCategories[key] = e.target.checked; });
     });
+  });
+
+  container.querySelector('#setHaptics').addEventListener('change', (e) => {
+    mutate((s) => { s.settings.hapticsEnabled = e.target.checked; });
   });
 
   delegate(container, 'click', '[data-action="csv-template"]', () => {

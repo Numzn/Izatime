@@ -151,6 +151,7 @@ export function defaultSettings() {
     notifyCategories: {
       classes: true, assignments: true, assessments: true, neglected: true,
     },
+    hapticsEnabled: true,
     focusMinutes: 25,
     breakMinutes: 5,
     longBreakMinutes: 15,
