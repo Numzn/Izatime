@@ -161,21 +161,38 @@ function buildCandidates(state, dateKey, minutesNow) {
 // requireInteraction/vibrate make the time-critical ones ("insistent")
 // harder to miss — but note this only ever reaches as far as the OS's own
 // silent/Do Not Disturb setting allows; no web API can override that.
-function fire(candidate) {
+//
+// Chrome for Android (and some other mobile browsers) throw "Illegal
+// constructor" if `new Notification()` is called directly from a page —
+// they require going through the active service worker's
+// showNotification() instead. Desktop browsers support both, so this
+// tries the service worker path first and only falls back to the direct
+// constructor when no active registration exists. Returns whether the
+// notification actually displayed, so callers (the manual test button in
+// particular) don't report success when it silently failed.
+async function fire(candidate) {
   const insistent = candidate.urgency >= 3 || candidate.exemptFromCap;
+  const options = {
+    body: candidate.body,
+    icon: 'icons/icon-192x192.png',
+    tag: candidate.key,
+    renotify: true,
+    silent: false,
+    requireInteraction: insistent,
+    vibrate: insistent ? [200, 100, 200, 100, 200] : [150],
+  };
   try {
-    // eslint-disable-next-line no-new
-    new Notification(candidate.title, {
-      body: candidate.body,
-      icon: 'icons/icon-192x192.png',
-      tag: candidate.key,
-      renotify: true,
-      silent: false,
-      requireInteraction: insistent,
-      vibrate: insistent ? [200, 100, 200, 100, 200] : [150],
-    });
+    const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (registration && registration.active) {
+      await registration.showNotification(candidate.title, options);
+    } else {
+      // eslint-disable-next-line no-new
+      new Notification(candidate.title, options);
+    }
+    return true;
   } catch (error) {
     console.warn('Notification failed to display:', error);
+    return false;
   }
 }
 
@@ -188,14 +205,14 @@ export async function sendTestNotification() {
   if (permission === 'default') permission = await requestPermission();
   if (permission !== 'granted') return { ok: false, reason: 'denied' };
 
-  fire({
+  const shown = await fire({
     key: `test:${Date.now()}`,
     urgency: 4,
     exemptFromCap: true,
     title: 'Test notification',
     body: "If you can see and hear this, notifications are working — including the insistent style used for time-critical reminders.",
   });
-  return { ok: true };
+  return shown ? { ok: true } : { ok: false, reason: 'failed' };
 }
 
 export function tick(referenceState = getState(), dateKey = todayKey()) {

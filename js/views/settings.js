@@ -409,6 +409,7 @@ export function render(container, { state, navigate }) {
     const result = await notifications.sendTestNotification();
     if (result.ok) showToast('Test notification sent');
     else if (result.reason === 'unsupported') showToast('Notifications are not supported on this device');
+    else if (result.reason === 'failed') showToast("Couldn't show it — check notifications are allowed for this app in your device/browser settings");
     else showToast('Notifications were not allowed — check your browser/device settings');
   });
 

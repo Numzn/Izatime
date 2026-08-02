@@ -65,8 +65,15 @@ within them:
   Time-critical ones fire as "insistent" (vibrate + stay on screen until
   dismissed) — the strongest a web app can make a notification; it cannot
   ring through the device's own silent mode or Do Not Disturb, since no
-  web API grants that. Settings has a "Send test notification" button to
-  confirm permission and this behavior on your device.
+  web API grants that. Shown through the service worker's
+  `showNotification()` rather than a direct `new Notification()` call —
+  several mobile browsers (Chrome for Android among them) throw if you
+  construct one directly from the page and require the service worker
+  path instead; this app tries that first and only falls back to the
+  direct constructor where no active registration exists (older desktop
+  contexts). Settings has a "Send test notification" button that reports
+  honestly if display actually failed, to confirm permission and this
+  behavior on your device.
 - **📅 Calendar export (.ics)** — download every class, assignment, and
   assessment as a standard calendar file and import it into Google
   Calendar, Apple Calendar, or Outlook — the reliability backstop for
