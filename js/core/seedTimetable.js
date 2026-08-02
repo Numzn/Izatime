@@ -1,5 +1,5 @@
 import { createSubject, createSession } from './models.js';
-import { todayKey } from './dates.js';
+import { todayKey, mondayOf } from './dates.js';
 
 const COURSES = [
   {
@@ -20,7 +20,13 @@ const COURSES = [
 ];
 
 export function seedTimetable(state) {
-  const anchor = todayKey();
+  // A recurring session never shows before its own anchor date (you can't
+  // retroactively have had a class before it existed in the app). Anchor
+  // to the Monday of the current week, not "today" — otherwise first
+  // opening the app partway through a week (e.g. on a Friday) would hide
+  // every earlier weekday's class until the following week, making a
+  // freshly-seeded timetable look mostly empty for no reason.
+  const anchor = mondayOf(todayKey());
 
   COURSES.forEach((course) => {
     const subject = createSubject({ name: course.name, priority: 2 });
