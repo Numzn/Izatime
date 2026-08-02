@@ -1,10 +1,11 @@
 import { createId } from '../core/id.js';
 import {
-  diffInDays, minutesFromHHMM, nowHHMM, todayKey,
+  diffInDays, minutesFromHHMM, nowHHMM, todayKey, formatMinutes,
 } from '../core/dates.js';
 import { createQuiz } from '../core/models.js';
 import { getSessionsForDate, getNextSession } from './scheduler.js';
 import { getDueFlashcards } from './spacedRepetition.js';
+import { getNextFreePeriod } from './freeTime.js';
 import { getWeakAreas } from './analytics.js';
 import {
   getMostUrgentAssignment, reminderLeadDays, getUpcomingAssessments, getAssignmentsDueWithin,
@@ -140,14 +141,22 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
     });
   }
 
-  // Due spaced-repetition reviews, general.
+  // Due spaced-repetition reviews — framed around real free time today
+  // when there's a window big enough to actually use one, so the
+  // suggestion answers "when" as well as "what." Same underlying signal
+  // as the plain-fact free-period note on Today; this is the actionable
+  // version of it.
   const dueCards = getDueFlashcards(state, referenceKey);
   if (dueCards.length > 0) {
+    const freePeriod = getNextFreePeriod(state, referenceKey, { fromMinutes: referenceMinutes });
+    const hasWindow = referenceKey === todayKey() && freePeriod && freePeriod.durationMinutes >= 20;
     recs.push({
       id: 'due-review',
-      urgency: 1,
+      urgency: hasWindow ? 2 : 1,
       icon: 'layers',
-      title: `${dueCards.length} review${dueCards.length === 1 ? '' : 's'} due`,
+      title: hasWindow
+        ? `${formatMinutes(freePeriod.durationMinutes)} free — good time for ${dueCards.length} due review${dueCards.length === 1 ? '' : 's'}`
+        : `${dueCards.length} review${dueCards.length === 1 ? '' : 's'} due`,
       detail: 'Spaced repetition works best when reviews happen on time.',
       action: { subjectId: dueCards[0]?.subjectId || null },
     });

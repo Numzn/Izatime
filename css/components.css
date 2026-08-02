@@ -283,6 +283,7 @@ h2 {
 .badge-priority-3 { background: var(--danger-soft); color: var(--danger); }
 
 /* ── SUBJECT WORKSPACE OVERVIEW TAB ──────────────────────── */
+.overview-lecturers { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
 .overview-next {
   background: var(--surface);
   border-radius: var(--radius-sm);

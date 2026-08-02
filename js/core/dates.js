@@ -61,6 +61,11 @@ export function minutesBetween(startHHMM, endHHMM) {
   return diff > 0 ? diff : 0;
 }
 
+export function minutesToHHMM(totalMinutes) {
+  const clamped = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+  return `${pad2(Math.floor(clamped / 60))}:${pad2(clamped % 60)}`;
+}
+
 export function nowHHMM() {
   const d = new Date();
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
