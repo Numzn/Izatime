@@ -1,4 +1,4 @@
-const CACHE_NAME = 'digital-timetable-v2.6';
+const CACHE_NAME = 'digital-timetable-v3.0';
 const ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,8 @@ const ASSETS = [
   './js/services/focusTimer.js',
   './js/services/notifications.js',
   './js/services/csvImport.js',
+  './js/services/icsExport.js',
+  './js/services/assignments.js',
   './js/services/googleAuth.js',
   './js/services/driveSync.js',
   './js/services/googleSync.js',
@@ -31,9 +33,9 @@ const ASSETS = [
   './js/components/nav.js',
   './js/components/icons.js',
   './js/views/dashboard.js',
-  './js/views/planner.js',
+  './js/views/timetable.js',
   './js/views/focus.js',
-  './js/views/learningHub.js',
+  './js/views/subjectWorkspace.js',
   './js/views/analyticsView.js',
   './js/views/settings.js',
   './icons/icon-72x72.png',

@@ -1,19 +1,14 @@
 import { createId } from '../core/id.js';
 import {
-  addDays, diffInDays, minutesFromHHMM, nowHHMM, todayKey,
+  diffInDays, minutesFromHHMM, nowHHMM, todayKey,
 } from '../core/dates.js';
 import { createQuiz } from '../core/models.js';
 import { getSessionsForDate, getNextSession } from './scheduler.js';
-import { getDueFlashcards, getDueTopics, masteryLabel } from './spacedRepetition.js';
+import { getDueFlashcards, getDueTopics } from './spacedRepetition.js';
 import { getWeakAreas } from './analytics.js';
-
-const STRATEGY_TIPS = [
-  'Use active recall: close your notes and try to explain the topic out loud before checking.',
-  'Chunk the session into 25-minute focus blocks with 5-minute breaks.',
-  'Teach it back — explaining a topic simply (Feynman technique) exposes gaps fast.',
-  'Interleave two related topics in one session instead of drilling one for too long.',
-  'Revisit yesterday\'s hardest topic for 5 minutes before starting something new.',
-];
+import {
+  getMostUrgentAssignment, reminderLeadDays, getUpcomingAssessments, getAssignmentsDueWithin,
+} from './assignments.js';
 
 function shuffle(list) {
   const arr = [...list];
@@ -50,37 +45,71 @@ export function getNeglectedSubjects(state, thresholdDays = 5, referenceKey = to
     .sort((a, b) => b.daysSinceActive - a.daysSinceActive);
 }
 
+// The Academic Planner: a deterministic rules engine over the student's own
+// schedule, not a chat assistant. Every rule below answers one of the
+// planner questions the app exists to answer — "what's next," "what's
+// urgent," "what should I revise," "what have I neglected" — ranked by
+// urgency so the most consequential one surfaces first.
 export function getRecommendations(state, referenceKey = todayKey(), referenceMinutes = minutesFromHHMM(nowHHMM())) {
   const recs = [];
 
+  // What should I prepare before my next class?
   const next = getNextSession(state, { fromDateKey: referenceKey, fromMinutes: referenceMinutes });
   if (next && next.dateKey === referenceKey) {
     const minsAway = minutesFromHHMM(next.session.startTime) - referenceMinutes;
     if (minsAway <= 20) {
       recs.push({
         id: `next-${next.session.id}`,
-        urgency: 3,
+        urgency: 4,
         icon: 'timer',
         title: minsAway <= 0 ? `${next.session.title} is starting now` : `${next.session.title} starts in ${minsAway}m`,
         detail: subjectName(state, next.session.subjectId),
-        action: { type: 'go-focus', subjectId: next.session.subjectId, sessionId: next.session.id },
+        action: { subjectId: next.session.subjectId },
       });
     }
   }
 
-  const dueCards = getDueFlashcards(state, referenceKey);
-  const dueTopics = getDueTopics(state, referenceKey);
-  if (dueCards.length + dueTopics.length > 0) {
+  // Which assignment is becoming urgent? Ranked by margin (days left minus
+  // the effort-scaled lead time it actually needs), not just nearest date.
+  const urgentAssignment = getMostUrgentAssignment(state, referenceKey);
+  if (urgentAssignment) {
+    const daysLeft = diffInDays(referenceKey, urgentAssignment.dueDate);
+    const margin = daysLeft - reminderLeadDays(urgentAssignment);
+    if (margin <= 2) {
+      recs.push({
+        id: `assignment-${urgentAssignment.id}`,
+        urgency: margin <= 0 ? 4 : 3,
+        icon: 'edit',
+        title: `${urgentAssignment.title} is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+        detail: subjectName(state, urgentAssignment.subjectId),
+        action: { subjectId: urgentAssignment.subjectId },
+      });
+    }
+  }
+
+  // Which exam should I revise for today? Cross-references the nearest
+  // assessment against actual flashcard mastery for that subject — this is
+  // why spaced repetition stays in the product: it's the signal this
+  // question needs.
+  const upcomingAssessments = getUpcomingAssessments(state, 7, referenceKey);
+  if (upcomingAssessments.length) {
+    const assessment = upcomingAssessments[0];
+    const daysLeft = diffInDays(referenceKey, assessment.date);
+    const shakyCards = getDueFlashcards(state, referenceKey)
+      .filter((c) => c.subjectId === assessment.subjectId).length;
     recs.push({
-      id: 'due-review',
-      urgency: 2,
-      icon: 'layers',
-      title: `${dueCards.length + dueTopics.length} review${dueCards.length + dueTopics.length === 1 ? '' : 's'} due`,
-      detail: 'Spaced repetition works best when reviews happen on time.',
-      action: { type: 'go-hub' },
+      id: `assessment-${assessment.id}`,
+      urgency: daysLeft <= 1 ? 4 : 3,
+      icon: 'help-circle',
+      title: shakyCards > 0
+        ? `Revise for ${assessment.name} — ${shakyCards} card${shakyCards === 1 ? '' : 's'} still shaky`
+        : `${assessment.name} in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+      detail: subjectName(state, assessment.subjectId),
+      action: { subjectId: assessment.subjectId },
     });
   }
 
+  // Which class have I neglected?
   const neglected = getNeglectedSubjects(state, 5, referenceKey);
   if (neglected.length) {
     const top = neglected[0];
@@ -89,26 +118,40 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
       urgency: 2,
       icon: 'bell',
       title: `${top.subject.name} needs attention`,
-      detail: top.last
-        ? `Not studied in ${top.daysSinceActive} days`
-        : 'No sessions completed yet',
-      action: { type: 'go-planner', subjectId: top.subject.id },
+      detail: top.last ? `Not studied in ${top.daysSinceActive} days` : 'No sessions completed yet',
+      action: { subjectId: top.subject.id },
     });
   }
 
-  const upcomingExams = state.exams
-    .filter((e) => diffInDays(referenceKey, e.date) >= 0 && diffInDays(referenceKey, e.date) <= 7)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  if (upcomingExams.length) {
-    const exam = upcomingExams[0];
-    const daysLeft = diffInDays(referenceKey, exam.date);
+  // Load clustering: several things landing in the same subject this week.
+  const loadBySubject = new Map();
+  [...getAssignmentsDueWithin(state, 7, referenceKey).map((a) => a.subjectId),
+    ...upcomingAssessments.map((a) => a.subjectId)]
+    .forEach((subjectId) => loadBySubject.set(subjectId, (loadBySubject.get(subjectId) || 0) + 1));
+  const clustered = [...loadBySubject.entries()].filter(([, count]) => count >= 3).sort((a, b) => b[1] - a[1])[0];
+  if (clustered) {
     recs.push({
-      id: `exam-${exam.id}`,
-      urgency: 3,
-      icon: 'file-text',
-      title: `${exam.name} in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
-      detail: subjectName(state, exam.subjectId),
-      action: { type: 'go-planner', subjectId: exam.subjectId },
+      id: `cluster-${clustered[0]}`,
+      urgency: 2,
+      icon: 'trending-down',
+      title: `${clustered[1]} things due this week in ${subjectName(state, clustered[0])}`,
+      detail: 'Might be worth planning study time now rather than later.',
+      action: { subjectId: clustered[0] },
+    });
+  }
+
+  // Due spaced-repetition reviews, general.
+  const dueCards = getDueFlashcards(state, referenceKey);
+  const dueTopics = getDueTopics(state, referenceKey);
+  if (dueCards.length + dueTopics.length > 0) {
+    const bySubject = dueCards[0]?.subjectId || dueTopics[0]?.subjectId || null;
+    recs.push({
+      id: 'due-review',
+      urgency: 1,
+      icon: 'layers',
+      title: `${dueCards.length + dueTopics.length} review${dueCards.length + dueTopics.length === 1 ? '' : 's'} due`,
+      detail: 'Spaced repetition works best when reviews happen on time.',
+      action: { subjectId: bySubject },
     });
   }
 
@@ -119,43 +162,11 @@ export function getRecommendations(state, referenceKey = todayKey(), referenceMi
       icon: 'trending-down',
       title: `Weak area: ${w.name}`,
       detail: w.reason,
-      action: w.type === 'subject' ? { type: 'go-planner', subjectId: w.id } : { type: 'go-hub' },
+      action: { subjectId: w.type === 'subject' ? w.id : null },
     });
   });
 
   return recs.sort((a, b) => b.urgency - a.urgency).slice(0, 4);
-}
-
-export function getDailyTip(state, referenceKey = todayKey()) {
-  const today = getSessionsForDate(state, referenceKey);
-  const done = today.filter((e) => e.completed).length;
-
-  if (today.length && done === today.length) {
-    return 'Everything for today is done. A short active-recall pass tonight will lock it in.';
-  }
-  if (today.length && done === 0) {
-    const top = [...today].sort((a, b) => b.session.priority - a.session.priority)[0];
-    return `Start with ${top.session.title} — it's today's top priority.`;
-  }
-
-  const dueCount = getDueFlashcards(state, referenceKey).length + getDueTopics(state, referenceKey).length;
-  if (dueCount > 0) {
-    return `${dueCount} review${dueCount === 1 ? '' : 's'} due — a quick pass now beats a long one later.`;
-  }
-
-  const dayIndex = Math.floor(new Date().getTime() / 86400000) % STRATEGY_TIPS.length;
-  return STRATEGY_TIPS[dayIndex];
-}
-
-export function getStudyStrategy(topic) {
-  const label = masteryLabel(topic.srs);
-  if (label === 'new') {
-    return `${topic.name} is new. Start with flashcards or a summary note, then attempt active recall before your next review.`;
-  }
-  if (label === 'learning') {
-    return `${topic.name} is progressing (review interval: ${topic.srs.interval} day${topic.srs.interval === 1 ? '' : 's'}). Keep reviewing on schedule rather than cramming.`;
-  }
-  return `${topic.name} is well retained. A light monthly review is enough — spend fresh time on newer topics.`;
 }
 
 export function generateQuiz(state, subjectId, { topicId = null, count = 5 } = {}) {

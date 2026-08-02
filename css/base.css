@@ -203,6 +203,7 @@ button {
   background: var(--surface);
   color: var(--text-secondary);
 }
+.icon-flip .icon { transform: scaleX(-1); }
 
 .account-indicator {
   position: relative;

@@ -3,6 +3,7 @@ import {
 } from '../core/store.js';
 import * as notifications from '../services/notifications.js';
 import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
+import { buildICS } from '../services/icsExport.js';
 import * as googleSync from '../services/googleSync.js';
 import { delegate, escapeHtml } from '../components/dom.js';
 import { confirmModal } from '../components/modal.js';
@@ -171,6 +172,14 @@ export function render(container, { state, navigate }) {
     </section>
 
     <section class="dash-section">
+      <h2>Calendar sync</h2>
+      <p class="settings-note">Download classes, assignments, and assessments as a calendar file, then import it into Google Calendar, Apple Calendar, or Outlook for reminders this app can't send in the background. Re-download and re-import any time to bring it up to date.</p>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" data-action="ics-export">${iconMarkup('download', { size: 15 })}Download calendar (.ics)</button>
+      </div>
+    </section>
+
+    <section class="dash-section">
       <h2>Your data</h2>
       <p class="settings-note">Everything is stored on this device only. Export a backup regularly.</p>
       <div class="settings-actions">
@@ -309,6 +318,16 @@ export function render(container, { state, navigate }) {
       showToast('Could not read that CSV file');
     }
     e.target.value = '';
+  });
+
+  delegate(container, 'click', '[data-action="ics-export"]', () => {
+    const blob = new Blob([buildICS(state)], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'digital-timetable.ics';
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   delegate(container, 'click', '[data-action="export"]', () => {

@@ -27,6 +27,7 @@
   font-weight: 600;
 }
 .btn-chip.active { background: var(--text-primary); color: var(--bg); }
+.btn-sm { padding: 7px 12px; font-size: 12px; }
 
 .link-btn {
   color: var(--text-secondary);
@@ -39,8 +40,7 @@
 }
 
 /* ── SECTIONS ───────────────────────────────────────────── */
-.dash-section, .planner-subjects, .planner-days, .planner-sessions,
-.planner-topics, .planner-exams, .hub-subjects, .hub-content {
+.dash-section, .timetable-week, .hub-subjects, .hub-content {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -179,6 +179,7 @@ h2 {
   flex-shrink: 0;
 }
 .subject-chip.selected { background: var(--surface-2); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--border); }
+.subject-chip-add { padding: 7px 10px; }
 .chip-dot {
   width: 7px; height: 7px; border-radius: 2px;
   background: var(--chip-color, var(--accent));
@@ -216,6 +217,75 @@ h2 {
 .session-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .session-title { font-weight: 600; font-size: 13.5px; }
 .session-meta { font-size: 11.5px; color: var(--text-muted); }
+
+/* ── DUE LIST (assignments + assessments, shared across views) ── */
+.due-list { display: flex; flex-direction: column; gap: 6px; }
+.due-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  text-align: left;
+}
+.due-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+.due-chip-assignment { background: var(--accent-soft); color: var(--accent); }
+.due-chip-assessment { background: var(--warning-soft); color: var(--warning); }
+.due-title { flex: 1; min-width: 0; font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.due-when { flex-shrink: 0; font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+
+/* ── ASSIGNMENT LIST (Subject Workspace) ─────────────────── */
+.assignment-list { display: flex; flex-direction: column; gap: 6px; }
+.assignment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  text-align: left;
+}
+.assignment-row.status-submitted, .assignment-row.status-graded { opacity: 0.55; }
+.assignment-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.assignment-title { font-weight: 600; font-size: 13px; }
+.assignment-meta { font-size: 11px; color: var(--text-muted); }
+.badge-priority-1 { background: var(--surface-2); color: var(--text-muted); }
+.badge-priority-2 { background: var(--warning-soft); color: var(--warning); }
+.badge-priority-3 { background: var(--danger-soft); color: var(--danger); }
+
+/* ── SUBJECT WORKSPACE OVERVIEW TAB ──────────────────────── */
+.overview-next {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 12px 13px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.overview-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-muted); }
+.overview-title { font-weight: 600; font-size: 13.5px; }
+.overview-subhead {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 16px 0 8px;
+}
+.overview-subhead:first-of-type { margin-top: 0; }
 
 /* ── TOPIC / EXAM / QUIZ / CARD LISTS ───────────────────── */
 .topic-list, .exam-list, .card-list, .quiz-list, .note-list { display: flex; flex-direction: column; gap: 6px; }

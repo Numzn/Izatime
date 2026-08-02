@@ -31,6 +31,10 @@ export function createTopic({ subjectId, name, difficulty = 2 }) {
   };
 }
 
+export function createChecklistItem({ text }) {
+  return { id: createId(), text, done: false };
+}
+
 export function createSession({
   subjectId,
   topicId = null,
@@ -42,6 +46,8 @@ export function createSession({
   priority = 2,
   recurrence = null,
   lecturer = '',
+  room = '',
+  checklist = [],
 }) {
   return {
     id: createId(),
@@ -55,6 +61,8 @@ export function createSession({
     priority,
     recurrence,
     lecturer,
+    room,
+    checklist,
     completions: [],
     createdAt: new Date().toISOString(),
   };
@@ -81,11 +89,48 @@ export function createQuiz({
   };
 }
 
-export function createExam({
-  subjectId, name, date, topicIds = [],
+// An "assessment" is anything with a fixed sit-down time: quiz, test, exam,
+// or practical. Distinct from an assignment (§ below), which has a
+// deadline to submit by rather than a time to show up prepared for.
+export function createAssessment({
+  subjectId, name, date, startTime = null, kind = 'exam', weight = null, topicIds = [], checklist = [],
 }) {
   return {
-    id: createId(), subjectId, name, date, topicIds, createdAt: new Date().toISOString(),
+    id: createId(), subjectId, name, date, startTime, kind, weight, topicIds, checklist, createdAt: new Date().toISOString(),
+  };
+}
+
+export const ASSIGNMENT_TYPES = ['homework', 'project', 'essay', 'lab', 'reading', 'other'];
+export const ASSIGNMENT_STATUSES = ['not-started', 'in-progress', 'submitted', 'graded'];
+
+export function createAssignment({
+  subjectId,
+  title,
+  dueDate,
+  dueTime = null,
+  description = '',
+  type = 'homework',
+  estimatedMinutes = null,
+  weight = null,
+  links = [],
+  checklist = [],
+  priorityOverride = null,
+}) {
+  return {
+    id: createId(),
+    subjectId,
+    title,
+    dueDate,
+    dueTime,
+    description,
+    type,
+    estimatedMinutes,
+    weight,
+    links,
+    checklist,
+    status: 'not-started',
+    priorityOverride,
+    createdAt: new Date().toISOString(),
   };
 }
 
@@ -130,7 +175,8 @@ export function defaultState() {
     notes: [],
     flashcards: [],
     quizzes: [],
-    exams: [],
+    assessments: [],
+    assignments: [],
     focusSessions: [],
     settings: defaultSettings(),
     streak: { current: 0, longest: 0, lastActiveDate: null },
