@@ -1,5 +1,6 @@
 import { mutate, exportJSON, importJSON, resetAll } from '../core/store.js';
 import * as notifications from '../services/notifications.js';
+import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
 import { delegate } from '../components/dom.js';
 import { confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
@@ -61,6 +62,16 @@ export function render(container, { state, navigate }) {
     </section>
 
     <section class="dash-section">
+      <h2>Timetable import</h2>
+      <p class="settings-note">Add classes in bulk from a spreadsheet. Columns: subject, title, day (MON..SUN), startTime (HH:MM), durationMinutes, lecturer, type, priority — only subject/title/day/startTime are required.</p>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" data-action="csv-template">${iconMarkup('download', { size: 15 })}Download CSV template</button>
+        <button class="btn btn-ghost" data-action="csv-import">${iconMarkup('upload', { size: 15 })}Import timetable CSV</button>
+      </div>
+      <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none">
+    </section>
+
+    <section class="dash-section">
       <h2>Your data</h2>
       <p class="settings-note">Everything is stored on this device only. Export a backup regularly.</p>
       <div class="settings-actions">
@@ -107,6 +118,36 @@ export function render(container, { state, navigate }) {
       }
     }
     mutate((s) => { s.settings.notificationsEnabled = e.target.checked; });
+  });
+
+  delegate(container, 'click', '[data-action="csv-template"]', () => {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'timetable-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  delegate(container, 'click', '[data-action="csv-import"]', () => container.querySelector('#importCsvFile').click());
+  container.querySelector('#importCsvFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      let result;
+      mutate((s) => { result = importTimetableCSV(s, text); });
+      if (result.imported > 0) {
+        showToast(`Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}${result.subjectsCreated ? `, ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}${result.skipped.length ? ` — ${result.skipped.length} row${result.skipped.length === 1 ? '' : 's'} skipped` : ''}`);
+      } else {
+        showToast('No valid rows found in that CSV');
+      }
+      if (result.skipped.length) console.warn('CSV import skipped rows:', result.skipped);
+    } catch (error) {
+      showToast('Could not read that CSV file');
+    }
+    e.target.value = '';
   });
 
   delegate(container, 'click', '[data-action="export"]', () => {
