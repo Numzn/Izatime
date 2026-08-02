@@ -6,7 +6,7 @@ import {
 import { getSessionsForDate, toggleCompletion } from '../services/scheduler.js';
 import { masteryLabel } from '../services/spacedRepetition.js';
 import { escapeHtml, delegate } from '../components/dom.js';
-import { openModal, closeModal, confirmModal } from '../components/modal.js';
+import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
 
