@@ -3,10 +3,38 @@ import { bus } from './events.js';
 import { addDays, todayKey } from './dates.js';
 import { seedTimetable } from './seedTimetable.js';
 
-const STORAGE_KEY = 'izatime:data';
-const BACKUP_KEY = 'izatime:backup';
+const LEGACY_DATA_KEY = 'izatime:data';
+const LEGACY_BACKUP_KEY = 'izatime:backup';
+const SESSION_KEY = 'izatime:session';
+const ACCOUNTS_KEY = 'izatime:accounts';
+const CONFIG_KEY = 'izatime:config';
 
 let state = null;
+let currentSub = null;
+
+function dataKeyFor(sub) {
+  return sub ? `izatime:data:${sub}` : 'izatime:data:local';
+}
+
+function backupKeyFor(sub) {
+  return sub ? `izatime:backup:${sub}` : 'izatime:backup:local';
+}
+
+// One-time upgrade: earlier versions of this app stored everything under a
+// single unscoped key. Adopt that as the "local" (signed-out) account so
+// existing users don't lose data when multi-account support ships.
+function migrateLegacyLocalData() {
+  try {
+    const legacyData = localStorage.getItem(LEGACY_DATA_KEY);
+    if (legacyData && !localStorage.getItem(dataKeyFor(null))) {
+      localStorage.setItem(dataKeyFor(null), legacyData);
+      const legacyBackup = localStorage.getItem(LEGACY_BACKUP_KEY);
+      if (legacyBackup) localStorage.setItem(backupKeyFor(null), legacyBackup);
+    }
+  } catch (error) {
+    console.warn('Store: legacy migration failed:', error);
+  }
+}
 
 function isValidState(candidate) {
   return !!candidate
@@ -34,6 +62,96 @@ function readKey(key) {
     console.warn(`Store: failed reading "${key}":`, error);
     return null;
   }
+}
+
+function readSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : { activeSub: null };
+  } catch (error) {
+    return { activeSub: null };
+  }
+}
+
+function writeSession(sub) {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ activeSub: sub }));
+  } catch (error) {
+    console.warn('Store: failed to save session:', error);
+  }
+}
+
+function readAccounts() {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function writeAccounts(list) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
+  } catch (error) {
+    console.warn('Store: failed to save account list:', error);
+  }
+}
+
+export function getKnownAccounts() {
+  return readAccounts().sort((a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''));
+}
+
+export function upsertKnownAccount(profile) {
+  const list = readAccounts().filter((a) => a.sub !== profile.sub);
+  list.push({ ...profile, lastUsedAt: new Date().toISOString() });
+  writeAccounts(list);
+}
+
+export function forgetAccount(sub) {
+  writeAccounts(readAccounts().filter((a) => a.sub !== sub));
+  try {
+    localStorage.removeItem(dataKeyFor(sub));
+    localStorage.removeItem(backupKeyFor(sub));
+  } catch (error) {
+    console.warn('Store: failed to clear account data:', error);
+  }
+}
+
+export function getCurrentAccount() {
+  if (!currentSub) return null;
+  return readAccounts().find((a) => a.sub === currentSub) || { sub: currentSub };
+}
+
+// Device-level config (not per-account data): the Google OAuth Client ID
+// must be known before any account is chosen, and stays the same across
+// every account signed into on this device.
+function readConfig() {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function writeConfig(config) {
+  try {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  } catch (error) {
+    console.warn('Store: failed to save device config:', error);
+  }
+}
+
+export function getGoogleClientId() {
+  return readConfig().googleClientId || '';
+}
+
+export function setGoogleClientId(clientId) {
+  writeConfig({ ...readConfig(), googleClientId: clientId });
 }
 
 function computeActiveDates(s) {
@@ -83,9 +201,11 @@ function recomputeDerived(s) {
 
 function persist(s) {
   try {
-    const existing = localStorage.getItem(STORAGE_KEY);
-    if (existing) localStorage.setItem(BACKUP_KEY, existing);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    const dataKey = dataKeyFor(currentSub);
+    const backupKey = backupKeyFor(currentSub);
+    const existing = localStorage.getItem(dataKey);
+    if (existing) localStorage.setItem(backupKey, existing);
+    localStorage.setItem(dataKey, JSON.stringify(s));
     return true;
   } catch (error) {
     console.error('Store: persist failed:', error);
@@ -94,15 +214,17 @@ function persist(s) {
   }
 }
 
-export function loadStore() {
-  const primary = readKey(STORAGE_KEY);
+function loadAccountState(sub) {
+  const primary = readKey(dataKeyFor(sub));
   if (primary) {
+    currentSub = sub;
     state = migrate(primary);
     return recomputeDerived(state);
   }
 
-  const backup = readKey(BACKUP_KEY);
+  const backup = readKey(backupKeyFor(sub));
   if (backup) {
+    currentSub = sub;
     state = migrate(backup);
     bus.emit('store:error', { type: 'recovered-from-backup' });
     recomputeDerived(state);
@@ -110,10 +232,27 @@ export function loadStore() {
     return state;
   }
 
-  state = seedTimetable(defaultState());
+  // Only the local/signed-out bucket gets the sample timetable — a fresh
+  // Google account should start empty, not inherit someone else's schedule.
+  currentSub = sub;
+  state = sub ? defaultState() : seedTimetable(defaultState());
   recomputeDerived(state);
   persist(state);
   return state;
+}
+
+export function loadStore() {
+  migrateLegacyLocalData();
+  const session = readSession();
+  return loadAccountState(session.activeSub || null);
+}
+
+export function switchAccount(sub) {
+  const result = loadAccountState(sub);
+  writeSession(sub);
+  bus.emit('store:change', state);
+  bus.emit('account:change', getCurrentAccount());
+  return result;
 }
 
 export function getState() {
@@ -132,6 +271,10 @@ export function mutate(fn) {
 
 export function subscribe(handler) {
   return bus.on('store:change', handler);
+}
+
+export function onAccountChange(handler) {
+  return bus.on('account:change', handler);
 }
 
 export function exportJSON() {
