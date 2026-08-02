@@ -155,13 +155,47 @@ function buildCandidates(state, dateKey, minutesNow) {
   return candidates.sort((a, b) => b.urgency - a.urgency);
 }
 
-function fire(title, body) {
+// A shared static tag would let a same-tag replacement silently swap in
+// without re-alerting on some platforms; tagging by the candidate's own
+// dedup key instead means every distinct notification actually alerts.
+// requireInteraction/vibrate make the time-critical ones ("insistent")
+// harder to miss — but note this only ever reaches as far as the OS's own
+// silent/Do Not Disturb setting allows; no web API can override that.
+function fire(candidate) {
+  const insistent = candidate.urgency >= 3 || candidate.exemptFromCap;
   try {
     // eslint-disable-next-line no-new
-    new Notification(title, { body, icon: 'icons/icon-192x192.png', tag: 'izatime' });
+    new Notification(candidate.title, {
+      body: candidate.body,
+      icon: 'icons/icon-192x192.png',
+      tag: candidate.key,
+      renotify: true,
+      silent: false,
+      requireInteraction: insistent,
+      vibrate: insistent ? [200, 100, 200, 100, 200] : [150],
+    });
   } catch (error) {
     console.warn('Notification failed to display:', error);
   }
+}
+
+// Manual "Send test notification" action from Settings — fires immediately,
+// ignoring quiet hours and the daily cap, so the user can confirm
+// permission and the insistent behavior actually work on their device.
+export async function sendTestNotification() {
+  if (!isSupported()) return { ok: false, reason: 'unsupported' };
+  let permission = permissionState();
+  if (permission === 'default') permission = await requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: 'denied' };
+
+  fire({
+    key: `test:${Date.now()}`,
+    urgency: 4,
+    exemptFromCap: true,
+    title: 'Test notification',
+    body: "If you can see and hear this, notifications are working — including the insistent style used for time-critical reminders.",
+  });
+  return { ok: true };
 }
 
 export function tick(referenceState = getState(), dateKey = todayKey()) {
@@ -179,7 +213,7 @@ export function tick(referenceState = getState(), dateKey = todayKey()) {
     .find((c) => !notifiedKeys.has(c.key) && (c.exemptFromCap || countToday < MAX_PER_DAY));
   if (!candidate) return null;
 
-  fire(candidate.title, candidate.body);
+  fire(candidate);
   recordNotification(dateKey, candidate.key);
   return candidate;
 }

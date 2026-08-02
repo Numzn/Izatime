@@ -153,6 +153,10 @@ export function render(container, { state, navigate }) {
       <label class="form-field-inline"><input type="checkbox" id="notifyAssignments" ${settings.notifyCategories.assignments ? 'checked' : ''}><span>Assignments</span></label>
       <label class="form-field-inline"><input type="checkbox" id="notifyAssessments" ${settings.notifyCategories.assessments ? 'checked' : ''}><span>Assessments</span></label>
       <label class="form-field-inline"><input type="checkbox" id="notifyNeglected" ${settings.notifyCategories.neglected ? 'checked' : ''}><span>Neglected subjects</span></label>
+      <p class="settings-note" style="margin-top:14px">Time-critical reminders (a class starting soon, something due today) fire as "insistent" — they vibrate and stay on screen until dismissed. This is the strongest a web app can make a notification; it can't ring through your device's own silent mode or Do Not Disturb.</p>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" data-action="test-notification">${iconMarkup('bell', { size: 15 })}Send test notification</button>
+      </div>
     </section>
 
     <section class="dash-section">
@@ -299,6 +303,13 @@ export function render(container, { state, navigate }) {
       }
     }
     mutate((s) => { s.settings.notificationsEnabled = e.target.checked; });
+  });
+
+  delegate(container, 'click', '[data-action="test-notification"]', async () => {
+    const result = await notifications.sendTestNotification();
+    if (result.ok) showToast('Test notification sent');
+    else if (result.reason === 'unsupported') showToast('Notifications are not supported on this device');
+    else showToast('Notifications were not allowed — check your browser/device settings');
   });
 
   const categoryToggles = [

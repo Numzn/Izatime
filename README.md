@@ -56,6 +56,11 @@ within them:
   1-day/day-of. Deduplicated per item, quiet-hours aware, requires explicit
   permission from Settings — and each category (classes/assignments/
   assessments/neglected-subject nudges) can be switched off independently.
+  Time-critical ones fire as "insistent" (vibrate + stay on screen until
+  dismissed) — the strongest a web app can make a notification; it cannot
+  ring through the device's own silent mode or Do Not Disturb, since no
+  web API grants that. Settings has a "Send test notification" button to
+  confirm permission and this behavior on your device.
 - **📅 Calendar export (.ics)** — download every class, assignment, and
   assessment as a standard calendar file and import it into Google
   Calendar, Apple Calendar, or Outlook — the reliability backstop for
