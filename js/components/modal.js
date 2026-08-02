@@ -40,7 +40,9 @@ export function openModal({
       btn.type = 'button';
       btn.className = `btn ${action.variant === 'danger' ? 'btn-danger' : action.variant === 'primary' ? 'btn-primary' : 'btn-ghost'}`;
       btn.textContent = action.label;
-      btn.addEventListener('click', () => action.onClick?.(close));
+      // Action buttons resolve the interaction themselves, so they get the
+      // plain closer — only backdrop/Escape dismissal should fire onClose.
+      btn.addEventListener('click', () => action.onClick?.(closeUI));
       actionsRow.appendChild(btn);
     });
     card.appendChild(actionsRow);
@@ -50,24 +52,28 @@ export function openModal({
   root.classList.add('active');
 
   function backdropHandler(event) {
-    if (event.target === root) close();
+    if (event.target === root) dismiss();
   }
   function escHandler(event) {
-    if (event.key === 'Escape') close();
+    if (event.key === 'Escape') dismiss();
   }
 
-  function close() {
+  function closeUI() {
     root.removeEventListener('click', backdropHandler);
     document.removeEventListener('keydown', escHandler);
     closeModal();
+  }
+
+  function dismiss() {
+    closeUI();
     onClose?.();
   }
 
   root.addEventListener('click', backdropHandler);
   document.addEventListener('keydown', escHandler);
-  activeClose = close;
+  activeClose = dismiss;
 
-  return close;
+  return closeUI;
 }
 
 export function confirmModal({
