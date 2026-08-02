@@ -82,6 +82,29 @@ review session) lives in the view module, not the store.
 
 ---
 
+## 📥 Importing a timetable from CSV
+
+Settings → Timetable import → Download CSV template for the exact columns.
+Only `subject`, `title`, `day`, and `startTime` are required — one row per
+weekly class:
+
+```csv
+subject,title,day,startTime,durationMinutes,lecturer,type,priority
+Digital Logic,IT221 - Digital Logic,MON,19:00,60,Pharrol Kazeze (Mr),school,2
+```
+
+- `day`: `MON`..`SUN`
+- `startTime`: 24-hour `HH:MM`
+- `durationMinutes`, `priority` (1-3), `type` (`school`/`study`/`exam-prep`) are optional and default to `60`, `2`, `school`
+- Subjects are matched by name (case-insensitive) or created if new
+- Each row becomes a weekly-recurring session; invalid rows are skipped and reported in a toast (details in the browser console)
+
+This is separate from **Export/Import backup**, which is a full JSON
+snapshot of the whole app (all data, not just the timetable) for moving
+between devices or restoring after a reset.
+
+---
+
 ## ✏️ Customization
 
 - **Data model**: see `js/core/models.js` for the shape of subjects, topics, sessions, notes, flashcards, quizzes, exams, and focus sessions.
