@@ -33,7 +33,7 @@ Open `http://localhost:8000`. No build step — plain ES modules loaded natively
 - **🔔 Smart notifications** — capped at 3/day, deduplicated per item, quiet-hours aware. Requires explicit permission from Settings.
 - **⚡ Offline-first** — service worker precaches the full app shell; all data lives in `localStorage` with an automatic rolling backup.
 - **🌗 Theme** — light/dark/system, plus data export/import/reset in Settings.
-- **🔄 Multi-account Google Drive sync** *(optional)* — sign in to sync your timetable to your own Google Drive and pick it up on another device. Fully optional; the app works completely offline without it. See below for setup.
+- **🔄 Google Drive sync** *(optional)* — sign in to sync your timetable to your own Google Drive (minimal `drive.appdata` scope only) and pick it up on another device, with timestamp-based conflict resolution and retry-with-backoff. Fully optional and works out of the box; the app is completely offline-capable without it. See below.
 
 ### About the "AI"
 There's no external API call and no network dependency — the coach is
@@ -110,36 +110,73 @@ between devices or restoring after a reset.
 
 ---
 
-## 🔄 Multi-account Google Drive sync
+## 🔄 Google Drive sync
 
-Entirely optional. Without it, everything still works, just tied to one
-browser on one device. With it, each person who signs in gets their own
-private copy of the app's data synced to their own Google Drive (in the
-hidden `appDataFolder`, invisible in their normal Drive) — nothing is
-shared between accounts, and signing in on a shared/public device never
-shows someone else's timetable unless they explicitly sign in themselves.
+Entirely optional — without it, everything still works, just tied to one
+browser on one device. **Settings → Account & sync → Sign in with Google**
+works out of the box on this deployment; no setup needed. Each person who
+signs in gets their own private copy of the app's data synced to their own
+Google Drive, in the hidden `appDataFolder` (invisible in their normal
+Drive, and inaccessible to this app or anyone else) — nothing is shared
+between accounts, and signing in on a shared device never shows someone
+else's timetable unless they sign in themselves.
 
-There's no server involved — the browser talks to Google's APIs directly,
-so this stays a static site. The one thing you have to do yourself, once,
-is create a free **Google OAuth Client ID**:
+**Minimal scope, no server.** The app requests exactly one OAuth scope,
+`drive.appdata` — enough to read/write its own hidden sync file and
+nothing else in your Drive. There's no backend: the browser talks to
+Google's APIs directly using [Google Identity Services](https://developers.google.com/identity/gsi/web)
+(not the deprecated `gapi.auth2`), so this stays a static site with no
+Client Secret anywhere. Even the "who's signed in" name/email/photo shown
+in the app comes from Drive's own `about.get` endpoint, which works under
+`drive.appdata` alone — no separate identity scope required.
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or reuse one).
-2. **APIs & Services → Library** → search **Google Drive API** → Enable.
-3. **APIs & Services → OAuth consent screen** → choose **External** → fill in an app name and your email → save. You can leave it in **Testing** mode and add your own (and any friends') Google account under **Test users** — no Google verification needed for personal/small-group use.
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Web application**.
-5. Under **Authorized JavaScript origins**, add the exact URL you serve the app from, e.g. `https://numzn.github.io` (no path, no trailing slash) — and `http://localhost:8000` too if you want sync to work locally.
-6. Copy the generated Client ID (`....apps.googleusercontent.com`) and paste it into **Settings → Account & sync** in the app.
-
-Once set, **Sign in with Google** pulls any existing synced data for that
-account (or seeds Drive with what's currently on the device if there's
-none yet), and every change auto-syncs a few seconds after you make it.
-**Sign out** just stops syncing and drops back to local-only storage —
-your local data for that account stays cached on the device either way.
+**How sync behaves:**
+- **Sign in** pulls your existing synced data if Drive already has some
+  newer than what's on this device, or seeds Drive from this device if
+  not (see conflict resolution below).
+- **Automatic backup** — every change auto-syncs to Drive a few seconds
+  after you make it (debounced, so rapid edits don't spam the network).
+- **Automatic restore on new devices** — sign in anywhere and your Drive
+  copy comes down automatically if it's newer than the empty/local state.
+- **Manual "Sync now"** and a **last-synced timestamp** are in Settings;
+  a small dot on the account icon in the header shows live status (grey
+  = not syncing, amber pulse = syncing, green = synced, red = error/needs
+  sign-in again).
+- **Sign out** stops syncing and drops back to local-only storage — your
+  data for that account stays cached on the device either way.
+- **Conflict resolution**: every save carries its own timestamp. On sign-in
+  and before every sync, the app compares the local timestamp against
+  Drive's copy — whichever is actually newer wins. If another device
+  synced more recently than this one knows about, that version is pulled
+  instead of being overwritten.
+- **Retries**: Drive requests retry up to 3 times with exponential backoff
+  on network errors, rate limiting (429), or server errors (5xx). A
+  rejected session (401) isn't retried — instead sync pauses and the UI
+  asks you to sign in again.
+- **Offline-first, always**: Drive sync is best-effort on top of
+  localStorage, which remains the primary datastore. No network, no
+  Google account, and no Client ID at all — the app works exactly the
+  same, just without the cross-device piece.
 
 Because this uses a client-side-only OAuth flow (no server to hold a
 refresh token), sync pauses after closing the browser — reopening the app
 shows your last-synced data immediately, but you'll need to tap **Resume
 sync** once to reconnect.
+
+### Using your own Google Cloud project (forks / other deployments)
+
+The shipped Client ID is tied to this app's authorized origin. If you fork
+this project to deploy it elsewhere, create your own free **Google OAuth
+Client ID** and paste it into Settings → Account & sync → Change Client ID:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or reuse one).
+2. **APIs & Services → Library** → search **Google Drive API** → Enable.
+3. **APIs & Services → OAuth consent screen** → choose **External** → fill in an app name and your email → save. You can leave it in **Testing** mode and add your own (and any friends') Google account under **Test users** — no Google verification needed for personal/small-group use.
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Web application**.
+5. Under **Authorized JavaScript origins**, add the exact URL you serve the app from, e.g. `https://yourname.github.io` (no path, no trailing slash) — and `http://localhost:8000` too if you want sync to work locally.
+6. Copy the generated Client ID (`....apps.googleusercontent.com`) and paste it into the app.
+
+Leaving the field blank reverts to the built-in Client ID.
 
 ---
 
@@ -178,7 +215,7 @@ Any static HTTPS host works — there's no backend.
 
 - **Stale UI after an update**: bump `CACHE_NAME` in `sw.js` so clients fetch fresh assets.
 - **Notifications not firing**: check Settings shows "Allowed"; browsers block `Notification` permission requests outside a user gesture, quiet hours, or once 3/day have already fired.
-- **Lost data**: local state lives under `izatime:data:local` (signed-out) or `izatime:data:<google-sub>` per signed-in account, each with a rolling backup at the matching `izatime:backup:*` key. Export a backup from Settings regularly regardless — Drive sync is optional and local storage can still be cleared by the browser.
+- **Lost data**: local state lives under `izatime:data:local` (signed-out) or `izatime:data:<account-id>` per signed-in account, each with a rolling backup at the matching `izatime:backup:*` key. Export a backup from Settings regularly regardless — Drive sync is optional and local storage can still be cleared by the browser.
 - **Sync says "paused"**: this is expected after closing the browser (see above) — tap **Resume sync** in Settings → Account & sync.
 
 ---

@@ -2,6 +2,7 @@ import { loadStore, getState, subscribe, getCurrentAccount } from './core/store.
 import { renderNav, ROUTES } from './components/nav.js';
 import { registerServiceWorker, initOfflineDetection, initInstallPrompt } from './pwa.js';
 import * as notifications from './services/notifications.js';
+import * as googleSync from './services/googleSync.js';
 import { iconMarkup } from './components/icons.js';
 import { escapeHtml } from './components/dom.js';
 
@@ -29,16 +30,26 @@ function applyTheme(theme) {
   else root.removeAttribute('data-theme');
 }
 
-function updateAccountIndicator() {
+function updateAccountIndicator(syncExtra = {}) {
   const btn = document.getElementById('accountIndicator');
   if (!btn) return;
   const account = getCurrentAccount();
   if (!account) { btn.style.display = 'none'; return; }
   btn.style.display = '';
-  btn.title = account.email ? `${account.name} · ${account.email}` : account.name;
-  btn.innerHTML = account.picture
+
+  const connected = googleSync.isConnected();
+  const syncing = !!syncExtra.syncing;
+  const hasError = !!syncExtra.error || !!syncExtra.needsReauth;
+
+  let statusWord = 'Not syncing';
+  let dotClass = 'sync-dot-off';
+  if (syncing) { statusWord = 'Syncing…'; dotClass = 'sync-dot-syncing'; } else if (hasError) { statusWord = syncExtra.needsReauth ? 'Sign in again to resume syncing' : 'Sync error'; dotClass = 'sync-dot-error'; } else if (connected) { statusWord = 'Synced'; dotClass = 'sync-dot-ok'; }
+
+  btn.title = `${account.email ? `${account.name} · ${account.email}` : account.name} — ${statusWord}`;
+  const avatar = account.picture
     ? `<img src="${escapeHtml(account.picture)}" alt="">`
     : escapeHtml((account.name || '?')[0]);
+  btn.innerHTML = `${avatar}<span class="sync-dot ${dotClass}"></span>`;
 }
 
 function renderCurrentView() {
@@ -105,6 +116,7 @@ function initApp() {
     startNotificationLoop();
 
     subscribe(() => renderCurrentView());
+    googleSync.onStatusChange((status) => updateAccountIndicator(status));
     navigate('dashboard');
   } catch (error) {
     console.error('App failed to start:', error);

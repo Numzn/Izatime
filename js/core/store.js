@@ -9,6 +9,13 @@ const SESSION_KEY = 'izatime:session';
 const ACCOUNTS_KEY = 'izatime:accounts';
 const CONFIG_KEY = 'izatime:config';
 
+// Ships with a working Client ID out of the box. Overridable in Settings
+// for anyone forking this app to their own Google Cloud project — the ID
+// is a public identifier (not a secret), safe to embed client-side; the
+// real access control is the "Authorized JavaScript origins" list
+// configured for it in Google Cloud Console.
+const DEFAULT_GOOGLE_CLIENT_ID = '901733894811-0ra0kkai03vb0rfbuvdgnci8e4n6roj2.apps.googleusercontent.com';
+
 let state = null;
 let currentSub = null;
 
@@ -147,7 +154,11 @@ function writeConfig(config) {
 }
 
 export function getGoogleClientId() {
-  return readConfig().googleClientId || '';
+  return readConfig().googleClientId || DEFAULT_GOOGLE_CLIENT_ID;
+}
+
+export function isDefaultGoogleClientId() {
+  return !readConfig().googleClientId;
 }
 
 export function setGoogleClientId(clientId) {
@@ -263,6 +274,7 @@ export function getState() {
 export function mutate(fn) {
   if (!state) loadStore();
   fn(state);
+  state.updatedAt = new Date().toISOString();
   recomputeDerived(state);
   persist(state);
   bus.emit('store:change', state);
