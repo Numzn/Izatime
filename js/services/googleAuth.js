@@ -1,9 +1,9 @@
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.appdata',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile',
-].join(' ');
+// Minimal-scope by design: drive.appdata is enough both to read/write our
+// hidden sync file AND (via Drive's own `about.get`) to read the signed-in
+// user's name/email/photo — no separate identity scope needed, and this
+// app never sees or touches anything else in the user's Drive.
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 let gisLoadPromise = null;
 
@@ -55,17 +55,6 @@ export async function requestAccessToken(clientId, { selectAccount = false } = {
 
     tokenClient.requestAccessToken(selectAccount ? { prompt: 'select_account' } : { prompt: '' });
   });
-}
-
-export async function fetchProfile(accessToken) {
-  const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!response.ok) throw new Error('Could not read your Google profile.');
-  const data = await response.json();
-  return {
-    sub: data.sub, email: data.email, name: data.name || data.email, picture: data.picture || '',
-  };
 }
 
 export function revokeToken(accessToken) {

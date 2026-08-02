@@ -1,5 +1,5 @@
 import {
-  mutate, exportJSON, importJSON, resetAll, getGoogleClientId, setGoogleClientId, getCurrentAccount, getKnownAccounts, forgetAccount,
+  mutate, exportJSON, importJSON, resetAll, getGoogleClientId, setGoogleClientId, isDefaultGoogleClientId, getCurrentAccount, getKnownAccounts, forgetAccount,
 } from '../core/store.js';
 import * as notifications from '../services/notifications.js';
 import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
@@ -37,15 +37,15 @@ function accountSyncSection(state) {
   const connected = googleSync.isConnected();
   const knownAccounts = getKnownAccounts().filter((a) => a.sub !== currentAccount?.sub);
 
-  if (!clientId || viewState.editingClientId) {
+  if (viewState.editingClientId) {
     return `
       <section class="dash-section">
         <h2>Account &amp; sync</h2>
-        <p class="settings-note">Add a Google OAuth Client ID to sync your timetable across devices. See the README for the one-time Google Cloud setup steps.</p>
-        <label class="form-field"><span>Google OAuth Client ID</span><input type="text" id="setClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${escapeHtml(clientId)}"></label>
+        <p class="settings-note">${isDefaultGoogleClientId() ? "Syncing already works with this app's built-in Client ID. Only change this if you've deployed your own fork with its own Google Cloud project — see the README." : 'Using a custom Google OAuth Client ID.'}</p>
+        <label class="form-field"><span>Google OAuth Client ID</span><input type="text" id="setClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${escapeHtml(isDefaultGoogleClientId() ? '' : clientId)}"></label>
         <div class="settings-actions">
           <button class="btn btn-primary" data-action="save-client-id">Save Client ID</button>
-          ${clientId ? '<button class="btn btn-ghost" data-action="cancel-client-id">Cancel</button>' : ''}
+          <button class="btn btn-ghost" data-action="cancel-client-id">Cancel</button>
         </div>
       </section>`;
   }
@@ -182,7 +182,10 @@ export function render(container, { state, navigate }) {
     </section>
   `;
 
-  unsubscribeSync = googleSync.onStatusChange(() => render(container, { state, navigate }));
+  unsubscribeSync = googleSync.onStatusChange((status) => {
+    if (status.needsReauth) showToast('Session expired — sign in again to resume syncing');
+    render(container, { state, navigate });
+  });
 
   container.querySelector('#setClientId')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') container.querySelector('[data-action="save-client-id"]')?.click();
@@ -190,10 +193,9 @@ export function render(container, { state, navigate }) {
 
   delegate(container, 'click', '[data-action="save-client-id"]', () => {
     const value = container.querySelector('#setClientId').value.trim();
-    if (!value) { showToast('Enter a Client ID'); return; }
     setGoogleClientId(value);
     viewState.editingClientId = false;
-    showToast('Client ID saved');
+    showToast(value ? 'Custom Client ID saved' : 'Reverted to the built-in Client ID');
     render(container, { state, navigate });
   });
 

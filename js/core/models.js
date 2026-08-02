@@ -121,6 +121,9 @@ export function defaultSettings() {
 export function defaultState() {
   return {
     version: SCHEMA_VERSION,
+    // Bumped on every local write; compared against the synced copy's own
+    // updatedAt to resolve sync conflicts (newest wins).
+    updatedAt: new Date().toISOString(),
     subjects: [],
     topics: [],
     sessions: [],
