@@ -3,6 +3,7 @@ import {
 } from '../core/store.js';
 import * as notifications from '../services/notifications.js';
 import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
+import { importTimetableICS } from '../services/icsImport.js';
 import { buildICS } from '../services/icsExport.js';
 import * as googleSync from '../services/googleSync.js';
 import { delegate, escapeHtml } from '../components/dom.js';
@@ -147,6 +148,11 @@ export function render(container, { state, navigate }) {
         <label class="form-field"><span>Quiet hours start</span><input type="time" id="setQuietStart" value="${settings.quietHours.start}"></label>
         <label class="form-field"><span>Quiet hours end</span><input type="time" id="setQuietEnd" value="${settings.quietHours.end}"></label>
       </div>
+      <p class="settings-note">Remind me about:</p>
+      <label class="form-field-inline"><input type="checkbox" id="notifyClasses" ${settings.notifyCategories.classes ? 'checked' : ''}><span>Classes</span></label>
+      <label class="form-field-inline"><input type="checkbox" id="notifyAssignments" ${settings.notifyCategories.assignments ? 'checked' : ''}><span>Assignments</span></label>
+      <label class="form-field-inline"><input type="checkbox" id="notifyAssessments" ${settings.notifyCategories.assessments ? 'checked' : ''}><span>Assessments</span></label>
+      <label class="form-field-inline"><input type="checkbox" id="notifyNeglected" ${settings.notifyCategories.neglected ? 'checked' : ''}><span>Neglected subjects</span></label>
     </section>
 
     <section class="dash-section">
@@ -169,6 +175,11 @@ export function render(container, { state, navigate }) {
         <button class="btn btn-ghost" data-action="csv-import">${iconMarkup('upload', { size: 15 })}Import timetable CSV</button>
       </div>
       <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none">
+      <p class="settings-note" style="margin-top:14px">Or add classes from another calendar app's export (.ics). Timed events are imported as classes — matched to an existing subject by name where possible, otherwise grouped under a subject called "Imported". Weekly-recurring events keep their recurrence; all-day events are skipped.</p>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" data-action="ics-import">${iconMarkup('upload', { size: 15 })}Import calendar (.ics)</button>
+      </div>
+      <input type="file" id="importIcsFile" accept=".ics,text/calendar" style="display:none">
     </section>
 
     <section class="dash-section">
@@ -290,6 +301,16 @@ export function render(container, { state, navigate }) {
     mutate((s) => { s.settings.notificationsEnabled = e.target.checked; });
   });
 
+  const categoryToggles = [
+    ['#notifyClasses', 'classes'], ['#notifyAssignments', 'assignments'],
+    ['#notifyAssessments', 'assessments'], ['#notifyNeglected', 'neglected'],
+  ];
+  categoryToggles.forEach(([selector, key]) => {
+    container.querySelector(selector).addEventListener('change', (e) => {
+      mutate((s) => { s.settings.notifyCategories[key] = e.target.checked; });
+    });
+  });
+
   delegate(container, 'click', '[data-action="csv-template"]', () => {
     const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -316,6 +337,26 @@ export function render(container, { state, navigate }) {
       if (result.skipped.length) console.warn('CSV import skipped rows:', result.skipped);
     } catch (error) {
       showToast('Could not read that CSV file');
+    }
+    e.target.value = '';
+  });
+
+  delegate(container, 'click', '[data-action="ics-import"]', () => container.querySelector('#importIcsFile').click());
+  container.querySelector('#importIcsFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      let result;
+      mutate((s) => { result = importTimetableICS(s, text); });
+      if (result.imported > 0) {
+        showToast(`Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}${result.subjectsCreated ? `, ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}${result.skipped.length ? ` — ${result.skipped.length} event${result.skipped.length === 1 ? '' : 's'} skipped` : ''}`);
+      } else {
+        showToast('No classes found in that calendar file');
+      }
+      if (result.skipped.length) console.warn('ICS import skipped events:', result.skipped);
+    } catch (error) {
+      showToast('Could not read that calendar file');
     }
     e.target.value = '';
   });

@@ -1,5 +1,5 @@
 import {
-  todayKey, WEEK_ORDER, dayCodeOf, addDays, minutesFromHHMM,
+  todayKey, WEEK_ORDER, dayCodeOf, addDays, minutesFromHHMM, keyToDate, dateToKey,
 } from '../core/dates.js';
 import { mutate } from '../core/store.js';
 import { createSession } from '../core/models.js';
@@ -18,7 +18,32 @@ function mondayOf(dateKey) {
   return addDays(dateKey, -WEEK_ORDER.indexOf(dayCodeOf(dateKey)));
 }
 
-const viewState = { weekStart: mondayOf(todayKey()), selectedDate: todayKey() };
+function addMonths(dateKey, n) {
+  const d = keyToDate(dateKey);
+  d.setMonth(d.getMonth() + n, 1);
+  return dateToKey(d);
+}
+
+function monthLabel(dateKey) {
+  return keyToDate(dateKey).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// Full 7-wide weeks covering the month, Monday-aligned, so leading/trailing
+// days from adjacent months fill out the grid rather than leaving gaps.
+function monthGridDays(dateKey) {
+  const d = keyToDate(dateKey);
+  const firstKey = dateToKey(new Date(d.getFullYear(), d.getMonth(), 1));
+  const lastKey = dateToKey(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+  const gridStart = mondayOf(firstKey);
+  const gridEnd = addDays(mondayOf(lastKey), 6);
+  const days = [];
+  for (let cursor = gridStart; cursor <= gridEnd; cursor = addDays(cursor, 1)) days.push(cursor);
+  return days;
+}
+
+const viewState = {
+  mode: 'week', weekStart: mondayOf(todayKey()), monthAnchor: todayKey(), selectedDate: todayKey(),
+};
 
 function field(labelText, inputEl) {
   const wrap = document.createElement('label');
@@ -186,32 +211,68 @@ function subjectName(state, id) {
   return state.subjects.find((s) => s.id === id)?.name || 'General';
 }
 
-export function render(container, { state, navigate }) {
+function renderWeekBlock(state, today) {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(viewState.weekStart, i));
+  return `
+    <div class="section-header">
+      <h2>${viewState.weekStart === mondayOf(today) ? 'This week' : `Week of ${viewState.weekStart}`}</h2>
+      <div class="week-nav">
+        <button class="icon-btn icon-flip" data-action="prev-week" aria-label="Previous week">${iconMarkup('chevron-right', { size: 14 })}</button>
+        <button class="btn-chip" data-action="go-today">Today</button>
+        <button class="icon-btn" data-action="next-week" aria-label="Next week">${iconMarkup('chevron-right', { size: 14 })}</button>
+      </div>
+    </div>
+    <div class="week-strip">
+      ${weekDays.map((dateKey) => {
+        const preview = dayPreview(state, dateKey);
+        return `
+          <button class="week-day${dateKey === viewState.selectedDate ? ' selected' : ''}${dateKey === today ? ' is-today' : ''}" data-select-day="${dateKey}">
+            <span class="week-day-name">${dayCodeOf(dateKey)[0]}${dayCodeOf(dateKey).slice(1).toLowerCase()}</span>
+            <span class="week-day-num">${Number(dateKey.slice(8, 10))}</span>
+            <span class="week-day-preview">${preview.classCount ? preview.classCount : ''}${preview.dueCount ? ` ${iconMarkup('edit', { size: 9 })}` : ''}</span>
+          </button>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderMonthBlock(state, today) {
+  const monthKey = viewState.monthAnchor.slice(0, 7);
+  const days = monthGridDays(viewState.monthAnchor);
+  return `
+    <div class="section-header">
+      <h2>${monthLabel(viewState.monthAnchor)}</h2>
+      <div class="week-nav">
+        <button class="icon-btn icon-flip" data-action="prev-month" aria-label="Previous month">${iconMarkup('chevron-right', { size: 14 })}</button>
+        <button class="btn-chip" data-action="go-today">Today</button>
+        <button class="icon-btn" data-action="next-month" aria-label="Next month">${iconMarkup('chevron-right', { size: 14 })}</button>
+      </div>
+    </div>
+    <div class="month-weekday-row">${WEEK_ORDER.map((code) => `<span>${code[0]}</span>`).join('')}</div>
+    <div class="month-grid">
+      ${days.map((dateKey) => {
+        const preview = dayPreview(state, dateKey);
+        const inMonth = dateKey.slice(0, 7) === monthKey;
+        const hasItems = preview.classCount > 0 || preview.dueCount > 0;
+        return `
+          <button class="month-cell${dateKey === viewState.selectedDate ? ' selected' : ''}${dateKey === today ? ' is-today' : ''}${inMonth ? '' : ' outside-month'}" data-select-day="${dateKey}">
+            <span class="month-cell-num">${Number(dateKey.slice(8, 10))}</span>
+            ${hasItems ? '<span class="month-cell-dot"></span>' : ''}
+          </button>`;
+      }).join('')}
+    </div>`;
+}
+
+export function render(container, { state, navigate }) {
   const agenda = buildAgenda(state, viewState.selectedDate);
   const today = todayKey();
 
   container.innerHTML = `
     <section class="dash-section timetable-week">
-      <div class="section-header">
-        <h2>${viewState.weekStart === mondayOf(today) ? 'This week' : `Week of ${viewState.weekStart}`}</h2>
-        <div class="week-nav">
-          <button class="icon-btn icon-flip" data-action="prev-week" aria-label="Previous week">${iconMarkup('chevron-right', { size: 14 })}</button>
-          <button class="btn-chip" data-action="go-today">Today</button>
-          <button class="icon-btn" data-action="next-week" aria-label="Next week">${iconMarkup('chevron-right', { size: 14 })}</button>
-        </div>
+      <div class="range-toggle timetable-mode-toggle">
+        <button class="btn-chip${viewState.mode === 'week' ? ' active' : ''}" data-mode="week">Week</button>
+        <button class="btn-chip${viewState.mode === 'month' ? ' active' : ''}" data-mode="month">Month</button>
       </div>
-      <div class="week-strip">
-        ${weekDays.map((dateKey) => {
-          const preview = dayPreview(state, dateKey);
-          return `
-            <button class="week-day${dateKey === viewState.selectedDate ? ' selected' : ''}${dateKey === today ? ' is-today' : ''}" data-select-day="${dateKey}">
-              <span class="week-day-name">${dayCodeOf(dateKey)[0]}${dayCodeOf(dateKey).slice(1).toLowerCase()}</span>
-              <span class="week-day-num">${Number(dateKey.slice(8, 10))}</span>
-              <span class="week-day-preview">${preview.classCount ? preview.classCount : ''}${preview.dueCount ? ` ${iconMarkup('edit', { size: 9 })}` : ''}</span>
-            </button>`;
-        }).join('')}
-      </div>
+      ${viewState.mode === 'week' ? renderWeekBlock(state, today) : renderMonthBlock(state, today)}
     </section>
 
     <section class="dash-section">
@@ -255,6 +316,10 @@ export function render(container, { state, navigate }) {
     viewState.selectedDate = t.dataset.selectDay;
     render(container, { state, navigate });
   });
+  delegate(container, 'click', '[data-mode]', (e, t) => {
+    viewState.mode = t.dataset.mode;
+    render(container, { state, navigate });
+  });
   delegate(container, 'click', '[data-action="prev-week"]', () => {
     viewState.weekStart = addDays(viewState.weekStart, -7);
     viewState.selectedDate = viewState.weekStart;
@@ -265,8 +330,17 @@ export function render(container, { state, navigate }) {
     viewState.selectedDate = viewState.weekStart;
     render(container, { state, navigate });
   });
+  delegate(container, 'click', '[data-action="prev-month"]', () => {
+    viewState.monthAnchor = addMonths(viewState.monthAnchor, -1);
+    render(container, { state, navigate });
+  });
+  delegate(container, 'click', '[data-action="next-month"]', () => {
+    viewState.monthAnchor = addMonths(viewState.monthAnchor, 1);
+    render(container, { state, navigate });
+  });
   delegate(container, 'click', '[data-action="go-today"]', () => {
     viewState.weekStart = mondayOf(today);
+    viewState.monthAnchor = today;
     viewState.selectedDate = today;
     render(container, { state, navigate });
   });
