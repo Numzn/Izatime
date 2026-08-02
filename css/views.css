@@ -73,7 +73,8 @@
   text-align: left;
 }
 
-/* ── TIMETABLE (week strip + day agenda) ─────────────────── */
+/* ── TIMETABLE (week strip / month grid + day agenda) ────── */
+.timetable-mode-toggle { margin-bottom: 12px; }
 .week-nav { display: flex; align-items: center; gap: 6px; }
 .week-strip {
   display: grid;
@@ -96,6 +97,44 @@
 .week-day-name { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; opacity: 0.7; }
 .week-day-num { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
 .week-day-preview { font-size: 9px; font-weight: 600; min-height: 11px; display: flex; align-items: center; gap: 2px; opacity: 0.8; }
+
+.month-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.month-weekday-row span {
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.month-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+.month-cell.outside-month { opacity: 0.35; }
+.month-cell.is-today .month-cell-num { color: var(--accent); }
+.month-cell.selected { background: var(--text-primary); color: var(--bg); }
+.month-cell.selected .month-cell-num, .month-cell.selected.is-today .month-cell-num { color: var(--bg); }
+.month-cell-num { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; }
+.month-cell-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+.month-cell.selected .month-cell-dot { background: var(--bg); }
+
 .agenda-list { display: flex; flex-direction: column; gap: 6px; }
 
 /* ── ANALYTICS ──────────────────────────────────────────── */

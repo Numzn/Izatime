@@ -134,20 +134,23 @@ function assessmentCandidates(state, dateKey) {
 }
 
 function buildCandidates(state, dateKey, minutesNow) {
-  const candidates = [
-    ...classCandidates(state, dateKey, minutesNow),
-    ...assignmentCandidates(state, dateKey),
-    ...assessmentCandidates(state, dateKey),
-  ];
+  const categories = state.settings.notifyCategories || {};
+  const candidates = [];
 
-  getNeglectedSubjects(state, 7, dateKey).slice(0, 1).forEach(({ subject }) => {
-    candidates.push({
-      key: `neglect:${subject.id}:${dateKey}`,
-      urgency: 1,
-      title: 'Time to revisit',
-      body: `You haven't reviewed ${subject.name} this week. Schedule a revision session?`,
+  if (categories.classes !== false) candidates.push(...classCandidates(state, dateKey, minutesNow));
+  if (categories.assignments !== false) candidates.push(...assignmentCandidates(state, dateKey));
+  if (categories.assessments !== false) candidates.push(...assessmentCandidates(state, dateKey));
+
+  if (categories.neglected !== false) {
+    getNeglectedSubjects(state, 7, dateKey).slice(0, 1).forEach(({ subject }) => {
+      candidates.push({
+        key: `neglect:${subject.id}:${dateKey}`,
+        urgency: 1,
+        title: 'Time to revisit',
+        body: `You haven't reviewed ${subject.name} this week. Schedule a revision session?`,
+      });
     });
-  });
+  }
 
   return candidates.sort((a, b) => b.urgency - a.urgency);
 }

@@ -32,9 +32,10 @@ within them:
 - **🏠 Today** — a next-class hero card with a live countdown, the rest of
   today's classes, everything due soon (assignments + assessments merged
   and sorted), and one top suggestion from the Academic Planner.
-- **🗓️ Timetable** — a Monday-aligned week strip plus a day agenda combining
-  classes, assignment due dates, and assessments on that day. Add one-off or
-  weekly-recurring classes with room/lecturer.
+- **🗓️ Timetable** — a Monday-aligned week strip, or a full month calendar
+  (toggle in-view), plus a day agenda combining classes, assignment due
+  dates, and assessments on that day. Add one-off or weekly-recurring
+  classes with room/lecturer.
 - **📚 Subject Workspace** — the per-subject home: Overview, Classes,
   Assignments, Assessments, Notes, Flashcards (+ generated quizzes), and
   History, all in one tabbed screen instead of scattered across separate
@@ -48,16 +49,23 @@ within them:
   below) that ranks by urgency across next class, most-urgent assignment,
   exam revision (cross-referenced against real flashcard mastery),
   neglected subjects, and workload clustering.
-- **🔔 Tiered notifications** — classes get 1-day/1-hour/10-minute reminders
-  (the 10-minute tier is exempt from the daily cap — missing a class is the
-  whole point), assignments get an effort-scaled lead reminder plus 3-day/
-  1-day/day-of, assessments get 1-week/3-day/1-day/day-of. Deduplicated per
-  item, quiet-hours aware, requires explicit permission from Settings.
+- **🔔 Tiered, per-category notifications** — classes get 1-day/1-hour/
+  10-minute reminders (the 10-minute tier is exempt from the daily cap —
+  missing a class is the whole point), assignments get an effort-scaled
+  lead reminder plus 3-day/1-day/day-of, assessments get 1-week/3-day/
+  1-day/day-of. Deduplicated per item, quiet-hours aware, requires explicit
+  permission from Settings — and each category (classes/assignments/
+  assessments/neglected-subject nudges) can be switched off independently.
 - **📅 Calendar export (.ics)** — download every class, assignment, and
   assessment as a standard calendar file and import it into Google
   Calendar, Apple Calendar, or Outlook — the reliability backstop for
   reminders a browser tab can't deliver in the background. Settings →
   Calendar sync.
+- **📥 Calendar import (.ics)** — bring an existing calendar export (e.g. a
+  university-issued semester timetable) in the other direction: timed
+  events become classes, matched to an existing subject by name where
+  possible or grouped under an "Imported" subject, weekly recurrence
+  preserved. Settings → Timetable import.
 - **⚡ Offline-first** — service worker precaches the full app shell; all
   data lives in `localStorage` with an automatic rolling backup.
 - **🌗 Theme** — light/dark/system, plus data export/import/reset in
@@ -116,6 +124,7 @@ Izatime/
 │   │   ├── focusTimer.js         Pomodoro state machine
 │   │   ├── notifications.js      tiered, deduped, quiet-hours-aware reminders
 │   │   ├── icsExport.js          RFC5545 calendar (.ics) export
+│   │   ├── icsImport.js          RFC5545 calendar (.ics) import
 │   │   ├── csvImport.js          bulk timetable import from CSV
 │   │   ├── googleAuth.js         Google Identity Services sign-in/token
 │   │   ├── driveSync.js          Drive appDataFolder file read/write
@@ -232,6 +241,7 @@ Leaving the field blank reverts to the built-in Client ID.
 - **Notification rules**: tune tiers/caps/quiet-hours logic in `js/services/notifications.js`.
 - **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
 - **Calendar export**: tune reminder framing or add new entity types to `js/services/icsExport.js`.
+- **Calendar import**: tune subject-matching or recurrence handling in `js/services/icsImport.js`.
 
 ---
 

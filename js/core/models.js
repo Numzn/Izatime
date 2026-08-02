@@ -155,6 +155,9 @@ export function defaultSettings() {
     dailyGoalMinutes: 60,
     quietHours: { start: '22:00', end: '07:00' },
     notificationsEnabled: false,
+    notifyCategories: {
+      classes: true, assignments: true, assessments: true, neglected: true,
+    },
     focusMinutes: 25,
     breakMinutes: 5,
     longBreakMinutes: 15,
