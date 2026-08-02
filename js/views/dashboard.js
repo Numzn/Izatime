@@ -3,6 +3,7 @@ import {
 } from '../core/dates.js';
 import { getNextSession, getSessionsForDate } from '../services/scheduler.js';
 import { getAssignmentsDueWithin, getUpcomingAssessments } from '../services/assignments.js';
+import { getNextFreePeriod } from '../services/freeTime.js';
 import { getRecommendations } from '../services/aiCoach.js';
 import { escapeHtml, delegate } from '../components/dom.js';
 import { iconMarkup } from '../components/icons.js';
@@ -62,6 +63,7 @@ export function render(container, { state, navigate }) {
   const dueSoon = [...dueAssignments, ...dueAssessments].sort((a, b) => a.date.localeCompare(b.date));
 
   const suggestion = getRecommendations(state, dateKey, nowMinutes)[0] || null;
+  const freePeriod = getNextFreePeriod(state, dateKey, { fromMinutes: nowMinutes });
 
   container.innerHTML = `
     <section class="today-hero">
@@ -96,6 +98,13 @@ export function render(container, { state, navigate }) {
         `).join('')}
       </div>
     </section>` : ''}
+
+    ${freePeriod ? `
+      <div class="free-period-note">
+        ${iconMarkup('hourglass', { size: 14 })}
+        <span>Free ${freePeriod.startTime}–${freePeriod.endTime}${freePeriod.beforeSession ? ` before ${escapeHtml(freePeriod.beforeSession.title)}` : ''}</span>
+      </div>
+    ` : ''}
 
     ${dueSoon.length ? `
     <section class="dash-section">

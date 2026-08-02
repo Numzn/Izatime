@@ -579,9 +579,21 @@ function openQuizModal(quiz) {
   });
 }
 
+// A fact about the subject, not just about one class — rolled up from
+// whichever of its sessions happen to carry a lecturer, instead of leaving
+// it buried in each class row with nowhere that says it once.
+function subjectLecturers(state, subjectId) {
+  const names = new Set();
+  state.sessions
+    .filter((s) => s.subjectId === subjectId && s.lecturer)
+    .forEach((s) => names.add(s.lecturer));
+  return [...names];
+}
+
 // ---- Tab content renderers ----
 function renderOverview(state, subject) {
   const dateKey = todayKey();
+  const lecturers = subjectLecturers(state, subject.id);
   const next = nextClassForSubject(state, subject.id, dateKey);
   const dueAssignments = getAssignmentsForSubject(state, subject.id)
     .filter((a) => !isAssignmentDone(a) && diffInDays(dateKey, a.dueDate) >= -1)
@@ -594,6 +606,7 @@ function renderOverview(state, subject) {
 
   return `
     <div class="section-header"><h2>Overview</h2><button class="btn btn-primary btn-sm" data-action="prepare-now">${iconMarkup('timer', { size: 14 })}Prepare now</button></div>
+    ${lecturers.length ? `<p class="overview-lecturers">Taught by ${lecturers.map(escapeHtml).join(', ')}</p>` : ''}
     ${next ? `
       <div class="overview-next">
         <span class="overview-label">Next class</span>

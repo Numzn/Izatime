@@ -31,12 +31,15 @@ within them:
 
 - **🏠 Today** — a next-class hero card with a live countdown, the rest of
   today's classes, everything due soon (assignments + assessments merged
-  and sorted), and one top suggestion from the Academic Planner.
+  and sorted), the next free study window between classes (a plain fact,
+  computed from your schedule — nothing to enter), and one top suggestion
+  from the Academic Planner.
 - **🗓️ Timetable** — a Monday-aligned week strip, or a full month calendar
   (toggle in-view), plus a day agenda combining classes, assignment due
   dates, and assessments on that day. Add one-off or weekly-recurring
   classes with room/lecturer.
-- **📚 Subject Workspace** — the per-subject home: Overview, Classes,
+- **📚 Subject Workspace** — the per-subject home: Overview (with a
+  "Taught by ..." line rolled up from that subject's classes), Classes,
   Assignments, Assessments, Notes, Flashcards (+ generated quizzes), and
   History, all in one tabbed screen instead of scattered across separate
   views.
@@ -48,7 +51,9 @@ within them:
 - **✨ Academic Planner** — a rule-based engine (not a hosted LLM — see
   below) that ranks by urgency across next class, most-urgent assignment,
   exam revision (cross-referenced against real flashcard mastery),
-  neglected subjects, and workload clustering.
+  neglected subjects, workload clustering, and — when there's a real free
+  window before your next class — framing due flashcard reviews around it
+  ("2h free — good time for 3 due reviews") instead of just "reviews due."
 - **🔔 Tiered, per-category notifications** — classes get 1-day/1-hour/
   10-minute reminders (the 10-minute tier is exempt from the daily cap —
   missing a class is the whole point), assignments get an effort-scaled
@@ -138,6 +143,7 @@ Izatime/
 │   │   └── id.js                 UUID helper
 │   ├── services/
 │   │   ├── scheduler.js          recurring/one-off session expansion
+│   │   ├── freeTime.js           free-study-period calculation between classes
 │   │   ├── assignments.js        assignment/assessment queries, derived priority
 │   │   ├── spacedRepetition.js   SM-2 algorithm for flashcards
 │   │   ├── aiCoach.js            Academic Planner recommendations, quiz generation
@@ -264,6 +270,7 @@ Leaving the field blank reverts to the built-in Client ID.
 - **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.
 - **Calendar export**: tune reminder framing or add new entity types to `js/services/icsExport.js`.
 - **Timetable import**: subject-matching and lecturer/session creation live in `js/services/timetableImport.js`, shared by both `csvImport.js` and `icsImport.js` — change it once, both formats pick it up.
+- **Free study periods**: tune the minimum gap size or the day's start/end bounds in `js/services/freeTime.js`.
 
 ---
 
