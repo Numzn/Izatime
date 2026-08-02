@@ -90,7 +90,7 @@ export function importTimetableCSV(state, csvText) {
       priority,
       recurrence: { days: [day], until: null },
       lecturer: row.lecturer || '',
-    }));
+    }, state));
     ctx.result.imported += 1;
   });
 

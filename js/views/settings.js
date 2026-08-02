@@ -15,10 +15,12 @@ let unsubscribeSync = null;
 const viewState = { editingClientId: false };
 
 // The moment "the timetable becomes the foundation" is actually visible,
-// instead of a toast that's gone in two seconds: what got created, and —
-// if permission is still undecided — a single tap to turn reminders on for
-// what was just imported, right when it's most obviously relevant.
-function showImportSummary(result, itemNoun) {
+// instead of a toast that's gone in two seconds: what got created, a
+// single tap to turn reminders on for what was just imported if permission
+// is still undecided, and — once, the first time it's actually relevant —
+// a chance to set the semester end date every recurring class just
+// imported can default to instead of running forever.
+function showImportSummary(state, result, itemNoun) {
   const body = document.createElement('div');
 
   const summary = document.createElement('p');
@@ -34,13 +36,50 @@ function showImportSummary(result, itemNoun) {
     body.appendChild(skippedNote);
   }
 
-  const actions = [{ label: 'Done', variant: result.imported > 0 && notifications.permissionState() === 'default' ? 'ghost' : 'primary', onClick: (close) => close() }];
+  const offerTerm = result.imported > 0 && !state.term.endDate && !state.term.asked;
+  let endDateInput = null;
+  if (offerTerm) {
+    const termNote = document.createElement('p');
+    termNote.className = 'settings-note';
+    termNote.style.marginTop = '14px';
+    termNote.textContent = "When does this semester end? Recurring classes stop repeating after this date instead of running forever — set it once here, and every class you add or import from now on uses it automatically.";
+    body.appendChild(termNote);
+    const dateLabel = document.createElement('label');
+    dateLabel.className = 'form-field';
+    const dateLabelText = document.createElement('span');
+    dateLabelText.textContent = 'Semester end date (optional)';
+    endDateInput = document.createElement('input');
+    endDateInput.type = 'date';
+    dateLabel.appendChild(dateLabelText);
+    dateLabel.appendChild(endDateInput);
+    body.appendChild(dateLabel);
+  }
+
+  const actions = [{
+    label: 'Done',
+    variant: result.imported > 0 && notifications.permissionState() === 'default' ? 'ghost' : 'primary',
+    onClick: (close) => {
+      if (offerTerm) {
+        mutate((s) => {
+          s.term.asked = true;
+          if (endDateInput.value) s.term.endDate = endDateInput.value;
+        });
+      }
+      close();
+    },
+  }];
 
   if (result.imported > 0 && notifications.isSupported() && notifications.permissionState() === 'default') {
     actions.push({
       label: 'Turn on reminders',
       variant: 'primary',
       onClick: async (close) => {
+        if (offerTerm) {
+          mutate((s) => {
+            s.term.asked = true;
+            if (endDateInput.value) s.term.endDate = endDateInput.value;
+          });
+        }
         const permission = await notifications.requestPermission();
         if (permission === 'granted') {
           mutate((s) => { s.settings.notificationsEnabled = true; });
@@ -214,6 +253,16 @@ export function render(container, { state, navigate }) {
     </section>
 
     <section class="dash-section">
+      <h2>Semester</h2>
+      <p class="settings-note">The master date range for your recurring classes. Set an end date once and any new or imported weekly class defaults to stopping there, instead of asking every time or running forever.</p>
+      <label class="form-field"><span>Label (optional)</span><input type="text" id="setTermLabel" placeholder="e.g. Semester 2 2026" value="${escapeHtml(state.term.label)}"></label>
+      <div class="settings-grid">
+        <label class="form-field"><span>Start date</span><input type="date" id="setTermStart" value="${state.term.startDate || ''}"></label>
+        <label class="form-field"><span>End date</span><input type="date" id="setTermEnd" value="${state.term.endDate || ''}"></label>
+      </div>
+    </section>
+
+    <section class="dash-section">
       <h2>Timetable import</h2>
       <p class="settings-note">Add classes in bulk from a spreadsheet. Columns: subject, title, day (MON..SUN), startTime (HH:MM), durationMinutes, lecturer, type, priority — only subject/title/day/startTime are required.</p>
       <div class="settings-actions">
@@ -334,6 +383,15 @@ export function render(container, { state, navigate }) {
   container.querySelector('#setTheme').addEventListener('change', (e) => {
     mutate((s) => { s.settings.theme = e.target.value; });
   });
+  container.querySelector('#setTermLabel').addEventListener('change', (e) => {
+    mutate((s) => { s.term.label = e.target.value.trim(); });
+  });
+  container.querySelector('#setTermStart').addEventListener('change', (e) => {
+    mutate((s) => { s.term.startDate = e.target.value || null; });
+  });
+  container.querySelector('#setTermEnd').addEventListener('change', (e) => {
+    mutate((s) => { s.term.endDate = e.target.value || null; });
+  });
 
   container.querySelector('#setNotify').addEventListener('change', async (e) => {
     if (e.target.checked) {
@@ -383,7 +441,7 @@ export function render(container, { state, navigate }) {
       let result;
       mutate((s) => { result = importTimetableCSV(s, text); });
       if (result.imported > 0) {
-        showImportSummary(result, 'row');
+        showImportSummary(state, result, 'row');
       } else {
         showToast('No valid rows found in that CSV');
       }
@@ -403,7 +461,7 @@ export function render(container, { state, navigate }) {
       let result;
       mutate((s) => { result = importTimetableICS(s, text); });
       if (result.imported > 0) {
-        showImportSummary(result, 'event');
+        showImportSummary(state, result, 'event');
       } else {
         showToast('No classes found in that calendar file');
       }

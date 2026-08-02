@@ -40,9 +40,10 @@ within them:
   classes with room/lecturer.
 - **📚 Subject Workspace** — the per-subject home: Overview (with a
   "Taught by ..." line rolled up from that subject's classes), Classes,
-  Assignments, Assessments, Notes, Flashcards (+ generated quizzes), and
-  History, all in one tabbed screen instead of scattered across separate
-  views.
+  Assignments, Assessments, Notes, Resources (links to slides, past papers,
+  readings — click to open, separate button to edit), Flashcards
+  (+ generated quizzes), and History, all in one tabbed screen instead of
+  scattered across separate views.
 - **🍅 Focus** *(contextual, launched from a subject's "Prepare now")* —
   configurable Pomodoro (focus/break/long break) with a 7-day focus history.
 - **📈 Progress** *(contextual, launched from a subject's History tab)* —
@@ -81,8 +82,15 @@ within them:
   nothing matches. `.ics` also picks up a lecturer from the `ORGANIZER`
   field where the source calendar sets one. Weekly recurrence is preserved
   either way. Finishing an import shows a summary of what was created, plus
-  a single tap to turn reminders on if permission hasn't been decided yet.
+  a single tap to turn reminders on if permission hasn't been decided yet —
+  and, the first time it's relevant, a chance to set the semester end date
+  (see below).
   Settings → Timetable import.
+- **🎓 Semester** — one end date, set once (Settings → Semester, or
+  prompted right after your first import), that every new or imported
+  weekly class defaults its recurrence to stop at — instead of asking per
+  class or running forever. Purely optional; leave it blank and classes
+  keep repeating indefinitely, same as before.
 - **⚡ Offline-first** — service worker precaches the full app shell; all
   data lives in `localStorage` with an automatic rolling backup.
 - **🌗 Theme** — light/dark/system, plus data export/import/reset in
@@ -264,7 +272,7 @@ Leaving the field blank reverts to the built-in Client ID.
 
 ## ✏️ Customization
 
-- **Data model**: see `js/core/models.js` for the shape of subjects, sessions, assignments, assessments, notes, flashcards, quizzes, and focus sessions.
+- **Data model**: see `js/core/models.js` for the shape of subjects, sessions, assignments, assessments, notes, resources, flashcards, quizzes, focus sessions, and the semester/term.
 - **Styling**: change tokens in `css/base.css` (`:root` custom properties) to re-theme the whole app.
 - **Notification rules**: tune tiers/caps/quiet-hours logic in `js/services/notifications.js`.
 - **Spaced repetition**: tune the SM-2 constants in `js/services/spacedRepetition.js`.

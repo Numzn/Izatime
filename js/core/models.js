@@ -59,6 +59,15 @@ export function createNote({ subjectId, title, body = '' }) {
   };
 }
 
+// A link or reference for a subject — same shape/purpose as a Note, just
+// pointing outward (a slide deck, a past-paper PDF, a reading) instead of
+// holding the content itself.
+export function createResource({ subjectId, title, url = '' }) {
+  return {
+    id: createId(), subjectId, title, url, createdAt: new Date().toISOString(),
+  };
+}
+
 export function createFlashcard({ subjectId, front, back }) {
   return {
     id: createId(), subjectId, front, back, srs: defaultSRS(), createdAt: new Date().toISOString(),
@@ -150,6 +159,15 @@ export function defaultSettings() {
   };
 }
 
+export function defaultTerm() {
+  // asked tracks whether the student has already been offered the
+  // post-import "when does this end?" prompt once, so it doesn't nag on
+  // every subsequent import once they've seen it (set or skipped).
+  return {
+    label: '', startDate: null, endDate: null, asked: false,
+  };
+}
+
 export function defaultState() {
   return {
     version: SCHEMA_VERSION,
@@ -159,12 +177,14 @@ export function defaultState() {
     subjects: [],
     sessions: [],
     notes: [],
+    resources: [],
     flashcards: [],
     quizzes: [],
     assessments: [],
     assignments: [],
     focusSessions: [],
     settings: defaultSettings(),
+    term: defaultTerm(),
     streak: { current: 0, longest: 0, lastActiveDate: null },
     notificationLog: [],
   };

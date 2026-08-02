@@ -28,6 +28,7 @@ const STROKE_PATHS = {
   hourglass: '<path d="M7 3h10"/><path d="M7 21h10"/><path d="M7 3c0 4 3 5.3 5 6.5-2 1.2-5 2.5-5 6.5"/><path d="M17 3c0 4-3 5.3-5 6.5 2 1.2 5 2.5 5 6.5"/>',
   pin: '<path d="M12 2.5a5 5 0 0 1 5 5c0 3.5-5 10-5 10s-5-6.5-5-10a5 5 0 0 1 5-5z"/><circle cx="12" cy="7.5" r="1.8"/>',
   repeat: '<path d="M4 7h13l-3-3"/><path d="M20 17H7l3 3"/>',
+  link: '<path d="M9 15l6-6"/><path d="M8 16a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 0 1 5 5l-1 1"/><path d="M16 8a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 0 1-5-5l1-1"/>',
 };
 
 const FILL_PATHS = {

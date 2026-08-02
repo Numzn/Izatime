@@ -41,7 +41,13 @@ export function resolveSubject(state, { subjectHint, titleForFallbackMatch, fall
 
 // The one place a session gets built from an imported row, so a field
 // either adapter forgets to pass through can't quietly differ between them.
-export function createSessionFromRow(subject, row) {
+// A weekly recurrence with no explicit end date defaults to the term's end
+// date once one is set, instead of running forever or asking per-row —
+// the semester is the master data for "when does this stop," not each row.
+export function createSessionFromRow(subject, row, state) {
+  const recurrence = row.recurrence
+    ? { days: row.recurrence.days, until: row.recurrence.until || state?.term?.endDate || null }
+    : null;
   return createSession({
     subjectId: subject.id,
     title: row.title,
@@ -50,7 +56,7 @@ export function createSessionFromRow(subject, row) {
     startTime: row.startTime,
     durationMinutes: row.durationMinutes,
     priority: row.priority || 2,
-    recurrence: row.recurrence || null,
+    recurrence,
     lecturer: row.lecturer || '',
     room: row.room || '',
   });

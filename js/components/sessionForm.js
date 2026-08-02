@@ -80,7 +80,10 @@ export function openSessionForm(state, existing, defaults = {}) {
   });
   const untilInput = document.createElement('input');
   untilInput.type = 'date';
-  untilInput.value = existing?.recurrence?.until || '';
+  // Defaults to the semester's end date, when one's set — the term is the
+  // master data for "when does this stop repeating," so a new recurring
+  // class doesn't make the student re-supply a date the app already knows.
+  untilInput.value = existing?.recurrence?.until || state.term?.endDate || '';
   dayRow.appendChild(untilInput);
   const toggleRecurrenceUI = () => { dayRow.style.display = repeatToggle.checked ? 'flex' : 'none'; };
   toggleRecurrenceUI();

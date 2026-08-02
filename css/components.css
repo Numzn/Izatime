@@ -350,6 +350,19 @@ h2 {
 .note-title { font-weight: 600; font-size: 13.5px; }
 .note-preview { font-size: 11.5px; color: var(--text-muted); }
 
+.note-card.resource-row { flex-direction: row; align-items: center; gap: 10px; padding: 9px 9px 9px 13px; }
+.resource-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+.resource-open .note-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resource-edit { flex-shrink: 0; color: var(--text-muted); padding: 6px; display: flex; }
+
 /* ── HUB TABS ───────────────────────────────────────────── */
 .hub-tabs {
   display: flex;
