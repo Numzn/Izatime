@@ -28,6 +28,10 @@ export function addDays(key, n) {
   return dateToKey(d);
 }
 
+export function mondayOf(key) {
+  return addDays(key, -WEEK_ORDER.indexOf(dayCodeOf(key)));
+}
+
 export function diffInDays(fromKey, toKey) {
   const ms = keyToDate(toKey).getTime() - keyToDate(fromKey).getTime();
   return Math.round(ms / 86400000);

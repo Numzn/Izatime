@@ -1,5 +1,5 @@
 import {
-  todayKey, WEEK_ORDER, dayCodeOf, addDays, minutesFromHHMM, keyToDate, dateToKey,
+  todayKey, WEEK_ORDER, dayCodeOf, addDays, minutesFromHHMM, keyToDate, dateToKey, mondayOf,
 } from '../core/dates.js';
 import { mutate } from '../core/store.js';
 import { getSessionsForDate, toggleCompletion } from '../services/scheduler.js';
@@ -10,10 +10,6 @@ import { iconMarkup } from '../components/icons.js';
 
 const TYPE_ICON = { school: 'graduation-cap', study: 'book', 'exam-prep': 'file-text' };
 const ASSESSMENT_KIND_LABEL = { quiz: 'Quiz', test: 'Test', exam: 'Exam', practical: 'Practical' };
-
-function mondayOf(dateKey) {
-  return addDays(dateKey, -WEEK_ORDER.indexOf(dayCodeOf(dateKey)));
-}
 
 function addMonths(dateKey, n) {
   const d = keyToDate(dateKey);
