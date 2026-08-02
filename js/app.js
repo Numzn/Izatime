@@ -1,8 +1,9 @@
-import { loadStore, getState, subscribe } from './core/store.js';
+import { loadStore, getState, subscribe, getCurrentAccount } from './core/store.js';
 import { renderNav, ROUTES } from './components/nav.js';
 import { registerServiceWorker, initOfflineDetection, initInstallPrompt } from './pwa.js';
 import * as notifications from './services/notifications.js';
 import { iconMarkup } from './components/icons.js';
+import { escapeHtml } from './components/dom.js';
 
 import * as dashboard from './views/dashboard.js';
 import * as planner from './views/planner.js';
@@ -28,9 +29,22 @@ function applyTheme(theme) {
   else root.removeAttribute('data-theme');
 }
 
+function updateAccountIndicator() {
+  const btn = document.getElementById('accountIndicator');
+  if (!btn) return;
+  const account = getCurrentAccount();
+  if (!account) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.title = account.email ? `${account.name} · ${account.email}` : account.name;
+  btn.innerHTML = account.picture
+    ? `<img src="${escapeHtml(account.picture)}" alt="">`
+    : escapeHtml((account.name || '?')[0]);
+}
+
 function renderCurrentView() {
   const state = getState();
   applyTheme(state.settings.theme);
+  updateAccountIndicator();
 
   const nextModule = VIEWS[currentRoute] || dashboard;
   if (currentModule && currentModule !== nextModule) currentModule.destroy?.();
@@ -62,6 +76,7 @@ function initSplash() {
 
 function initHeader() {
   document.getElementById('btnSettings')?.addEventListener('click', () => navigate('settings'));
+  document.getElementById('accountIndicator')?.addEventListener('click', () => navigate('settings'));
 }
 
 function startNotificationLoop() {

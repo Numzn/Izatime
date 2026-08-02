@@ -1,4 +1,4 @@
-const CACHE_NAME = 'digital-timetable-v2.4';
+const CACHE_NAME = 'digital-timetable-v2.5';
 const ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,9 @@ const ASSETS = [
   './js/services/focusTimer.js',
   './js/services/notifications.js',
   './js/services/csvImport.js',
+  './js/services/googleAuth.js',
+  './js/services/driveSync.js',
+  './js/services/googleSync.js',
   './js/components/dom.js',
   './js/components/toast.js',
   './js/components/modal.js',
@@ -81,6 +84,11 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   // Only cache GET requests
   if (event.request.method !== 'GET') return;
+
+  // Never intercept cross-origin requests (Google Sign-In, Drive API,
+  // webfonts) — those carry auth tokens or need to always hit the network,
+  // and have no business going through our same-origin app-shell cache.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {

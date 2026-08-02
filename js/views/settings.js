@@ -1,10 +1,16 @@
-import { mutate, exportJSON, importJSON, resetAll } from '../core/store.js';
+import {
+  mutate, exportJSON, importJSON, resetAll, getGoogleClientId, setGoogleClientId, getCurrentAccount, getKnownAccounts, forgetAccount,
+} from '../core/store.js';
 import * as notifications from '../services/notifications.js';
 import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
-import { delegate } from '../components/dom.js';
+import * as googleSync from '../services/googleSync.js';
+import { delegate, escapeHtml } from '../components/dom.js';
 import { confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
+
+let unsubscribeSync = null;
+const viewState = { editingClientId: false };
 
 function permissionText() {
   if (!notifications.isSupported()) return 'Not supported on this device';
@@ -14,10 +20,103 @@ function permissionText() {
   return 'Not requested yet';
 }
 
+function relativeTime(iso) {
+  if (!iso) return 'never';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+function accountSyncSection(state) {
+  const clientId = getGoogleClientId();
+  const currentAccount = getCurrentAccount();
+  const connected = googleSync.isConnected();
+  const knownAccounts = getKnownAccounts().filter((a) => a.sub !== currentAccount?.sub);
+
+  if (!clientId || viewState.editingClientId) {
+    return `
+      <section class="dash-section">
+        <h2>Account &amp; sync</h2>
+        <p class="settings-note">Add a Google OAuth Client ID to sync your timetable across devices. See the README for the one-time Google Cloud setup steps.</p>
+        <label class="form-field"><span>Google OAuth Client ID</span><input type="text" id="setClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" value="${escapeHtml(clientId)}"></label>
+        <div class="settings-actions">
+          <button class="btn btn-primary" data-action="save-client-id">Save Client ID</button>
+          ${clientId ? '<button class="btn btn-ghost" data-action="cancel-client-id">Cancel</button>' : ''}
+        </div>
+      </section>`;
+  }
+
+  let statusBlock;
+  if (connected) {
+    statusBlock = `
+      <div class="account-row">
+        ${currentAccount?.picture ? `<img class="account-avatar" src="${escapeHtml(currentAccount.picture)}" alt="">` : `<span class="account-avatar account-avatar-fallback">${escapeHtml((currentAccount?.name || '?')[0])}</span>`}
+        <span class="account-info">
+          <span class="account-name">${escapeHtml(currentAccount?.name || 'Signed in')}</span>
+          <span class="account-email">${escapeHtml(currentAccount?.email || '')}</span>
+        </span>
+      </div>
+      <p class="settings-note">Synced ${relativeTime(googleSync.getLastSyncedAt())}</p>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" data-action="sync-now">${iconMarkup('repeat', { size: 15 })}Sync now</button>
+        <button class="btn btn-ghost" data-action="sign-out">Sign out</button>
+      </div>`;
+  } else if (currentAccount) {
+    statusBlock = `
+      <div class="account-row">
+        ${currentAccount.picture ? `<img class="account-avatar" src="${escapeHtml(currentAccount.picture)}" alt="">` : `<span class="account-avatar account-avatar-fallback">${escapeHtml((currentAccount.name || '?')[0])}</span>`}
+        <span class="account-info">
+          <span class="account-name">${escapeHtml(currentAccount.name || 'Signed in')}</span>
+          <span class="account-email">Sync paused — sign in again to resume</span>
+        </span>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" data-action="resume-sync">Resume sync</button>
+      </div>`;
+  } else {
+    statusBlock = `
+      <p class="settings-note">Not signed in — this timetable only lives on this device.</p>
+      <div class="settings-actions">
+        <button class="btn btn-primary" data-action="sign-in">${iconMarkup('upload', { size: 15 })}Sign in with Google</button>
+      </div>`;
+  }
+
+  return `
+    <section class="dash-section">
+      <h2>Account &amp; sync</h2>
+      ${statusBlock}
+      <button class="link-btn" data-action="switch-account">Sign in with a different Google account</button>
+      ${knownAccounts.length ? `
+        <p class="settings-note">Other accounts used on this device:</p>
+        <div class="account-list">
+          ${knownAccounts.map((a) => `
+            <div class="account-row account-row-compact">
+              <span class="account-name">${escapeHtml(a.name)}</span>
+              <button class="link-btn" data-action="forget-account" data-sub="${escapeHtml(a.sub)}">Forget</button>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      <button class="link-btn" data-action="edit-client-id">Change Client ID</button>
+    </section>`;
+}
+
+export function destroy() {
+  unsubscribeSync?.();
+  unsubscribeSync = null;
+}
+
 export function render(container, { state, navigate }) {
+  destroy();
   const { settings } = state;
 
   container.innerHTML = `
+    ${accountSyncSection(state)}
+
     <section class="dash-section">
       <h2>Daily goal</h2>
       <label class="form-field">
@@ -82,6 +181,66 @@ export function render(container, { state, navigate }) {
       <input type="file" id="importFile" accept="application/json" style="display:none">
     </section>
   `;
+
+  unsubscribeSync = googleSync.onStatusChange(() => render(container, { state, navigate }));
+
+  container.querySelector('#setClientId')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') container.querySelector('[data-action="save-client-id"]')?.click();
+  });
+
+  delegate(container, 'click', '[data-action="save-client-id"]', () => {
+    const value = container.querySelector('#setClientId').value.trim();
+    if (!value) { showToast('Enter a Client ID'); return; }
+    setGoogleClientId(value);
+    viewState.editingClientId = false;
+    showToast('Client ID saved');
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="cancel-client-id"]', () => {
+    viewState.editingClientId = false;
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="edit-client-id"]', () => {
+    viewState.editingClientId = true;
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="sign-in"], [data-action="switch-account"], [data-action="resume-sync"]', async (event, target) => {
+    const selectAccount = target.dataset.action === 'switch-account';
+    try {
+      showToast('Opening Google sign-in…');
+      const profile = await googleSync.signIn({ selectAccount });
+      showToast(`Signed in as ${profile.name}`);
+    } catch (error) {
+      showToast(error.message || 'Sign-in failed');
+    }
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="sign-out"]', () => {
+    googleSync.signOut();
+    showToast('Signed out — back to local storage');
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="sync-now"]', async () => {
+    try {
+      await googleSync.syncNow();
+      showToast('Synced');
+    } catch (error) {
+      showToast('Sync failed');
+    }
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="forget-account"]', async (event, target) => {
+    const ok = await confirmModal({ message: 'Remove this account and its cached data from this device? Anything already synced to Drive is untouched.' });
+    if (!ok) return;
+    forgetAccount(target.dataset.sub);
+    render(container, { state, navigate });
+  });
 
   container.querySelector('#setGoal').addEventListener('change', (e) => {
     mutate((s) => { s.settings.dailyGoalMinutes = Math.max(10, Number(e.target.value) || 60); });
