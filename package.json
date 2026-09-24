@@ -1,7 +1,7 @@
 {
-  "name": "digital-timetable",
+  "name": "numzstudy",
   "version": "2.1.0",
-  "description": "Digital Timetable — an offline-first class timetable and study companion PWA (planner, spaced repetition, focus timer, analytics)",
+  "description": "NumzStudy — an offline-first class timetable and study companion PWA (planner, spaced repetition, focus timer, analytics)",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 8000",

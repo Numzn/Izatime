@@ -1,4 +1,4 @@
-const CACHE_NAME = 'digital-timetable-v4.0';
+const CACHE_NAME = 'numzstudy-v4.1';
 const ASSETS = [
   './',
   './index.html',
@@ -136,7 +136,7 @@ self.addEventListener('fetch', event => {
 // closed; showNotification() here works from a background service worker
 // the same way it works from an open tab (see notifications.js's fire()).
 self.addEventListener('push', event => {
-  let payload = { title: 'Digital Timetable', body: '' };
+  let payload = { title: 'NumzStudy', body: '' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (error) {

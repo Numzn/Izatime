@@ -523,7 +523,7 @@ export function render(container, { state, navigate }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'digital-timetable.ics';
+    a.download = 'numzstudy.ics';
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -533,7 +533,7 @@ export function render(container, { state, navigate }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `izatime-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `numzstudy-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   });
