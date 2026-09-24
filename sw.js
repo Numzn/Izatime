@@ -1,4 +1,4 @@
-const CACHE_NAME = 'digital-timetable-v3.8';
+const CACHE_NAME = 'digital-timetable-v4.0';
 const ASSETS = [
   './',
   './index.html',
@@ -28,8 +28,10 @@ const ASSETS = [
   './js/services/haptics.js',
   './js/services/assignments.js',
   './js/services/googleAuth.js',
-  './js/services/driveSync.js',
-  './js/services/googleSync.js',
+  './js/services/backendApi.js',
+  './js/services/backendAuth.js',
+  './js/services/backendSync.js',
+  './js/services/pushSubscription.js',
   './js/components/dom.js',
   './js/components/toast.js',
   './js/components/modal.js',
@@ -125,6 +127,27 @@ self.addEventListener('fetch', event => {
         }
         throw error;
       });
+    })
+  );
+});
+
+// A reminder pushed by the backend's scheduler (server/src/jobs/
+// reminderScheduler.js) — this is what actually fires while the app is
+// closed; showNotification() here works from a background service worker
+// the same way it works from an open tab (see notifications.js's fire()).
+self.addEventListener('push', event => {
+  let payload = { title: 'Digital Timetable', body: '' };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch (error) {
+    if (event.data) payload.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag,
+      icon: 'icons/icon-192x192.png',
+      renotify: true,
     })
   );
 });

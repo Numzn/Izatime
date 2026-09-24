@@ -1,14 +1,9 @@
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
-// Minimal-scope by design: drive.appdata is enough both to read/write our
-// hidden sync file AND (via Drive's own `about.get`) to read the signed-in
-// user's name/email/photo — no separate identity scope needed, and this
-// app never sees or touches anything else in the user's Drive.
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 let gisLoadPromise = null;
 
 function loadGisScript() {
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
+  if (window.google?.accounts?.id) return Promise.resolve();
   if (gisLoadPromise) return gisLoadPromise;
 
   gisLoadPromise = new Promise((resolve, reject) => {
@@ -30,34 +25,36 @@ function loadGisScript() {
   return gisLoadPromise;
 }
 
-export async function requestAccessToken(clientId, { selectAccount = false } = {}) {
-  if (!clientId) throw new Error('Add a Google OAuth Client ID in Settings first.');
+// Gets a Google ID token (a signed JWT asserting who the user is) rather
+// than an OAuth access token — the backend needs something it can verify
+// on its own against Google's public keys (see server/src/routes/auth.js),
+// not a bearer credential scoped to calling Google's own APIs. This is
+// Google Identity Services' "Sign In With Google" flow, prompted from our
+// own button's click handler so it's a real user gesture rather than an
+// unprompted auto-display (which browsers/GIS are more likely to suppress).
+export async function requestIdToken(clientId) {
+  if (!clientId) throw new Error('Set the Google OAuth Client ID first.');
   await loadGisScript();
 
   return new Promise((resolve, reject) => {
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    let settled = false;
+    window.google.accounts.id.initialize({
       client_id: clientId,
-      scope: SCOPES,
       callback: (response) => {
-        if (response.error) {
-          reject(new Error(response.error_description || response.error));
-          return;
-        }
-        resolve({
-          accessToken: response.access_token,
-          expiresAt: Date.now() + (Number(response.expires_in) || 3600) * 1000,
-        });
+        if (settled) return;
+        settled = true;
+        if (response?.credential) resolve(response.credential);
+        else reject(new Error('Google sign-in did not return a credential.'));
       },
-      error_callback: (error) => {
-        reject(new Error(error?.message || 'Google sign-in was cancelled.'));
-      },
+      use_fedcm_for_prompt: true,
     });
 
-    tokenClient.requestAccessToken(selectAccount ? { prompt: 'select_account' } : { prompt: '' });
+    window.google.accounts.id.prompt((notification) => {
+      if (settled) return;
+      if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+        settled = true;
+        reject(new Error('Google sign-in was closed or blocked. Check third-party sign-in is allowed for this site and try again.'));
+      }
+    });
   });
-}
-
-export function revokeToken(accessToken) {
-  if (!accessToken || !window.google?.accounts?.oauth2) return;
-  window.google.accounts.oauth2.revoke(accessToken, () => {});
 }

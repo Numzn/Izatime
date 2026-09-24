@@ -191,6 +191,21 @@ export function setGoogleClientId(clientId) {
   writeConfig({ ...readConfig(), googleClientId: clientId });
 }
 
+// The backend has no built-in default the way the Google Client ID does —
+// it isn't a public identifier safe to ship in a public repo, it's wherever
+// you deployed server/ to. Sync/reminders stay off until this is set.
+export function getBackendUrl() {
+  return readConfig().backendUrl || '';
+}
+
+export function isBackendConfigured() {
+  return !!readConfig().backendUrl;
+}
+
+export function setBackendUrl(url) {
+  writeConfig({ ...readConfig(), backendUrl: url.replace(/\/+$/, '') });
+}
+
 function computeActiveDates(s) {
   const active = new Set();
   s.sessions.forEach((session) => session.completions.forEach((d) => active.add(d)));

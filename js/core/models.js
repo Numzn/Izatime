@@ -152,6 +152,10 @@ export function defaultSettings() {
       classes: true, assignments: true, assessments: true, neglected: true,
     },
     hapticsEnabled: true,
+    // The backend reminder scheduler has no device of its own to ask what
+    // "today" or "10 minutes before class" means in — it needs this to
+    // evaluate reminders in the user's own time rather than the server's.
+    timezone: (typeof Intl !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC',
     focusMinutes: 25,
     breakMinutes: 5,
     longBreakMinutes: 15,
