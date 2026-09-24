@@ -1,0 +1,279 @@
+// Digital Timetable backend schema.
+//
+// Sync model: every syncable entity carries a client-supplied `id` (the app
+// already generates UUIDs client-side via core/id.js, so the server never
+// remaps IDs — offline creates merge in cleanly later) plus a server-managed
+// `updatedAt` (Prisma's @updatedAt, stamped on every write). That `updatedAt`
+// serves two jobs: it's the pull cursor ("give me everything after this
+// timestamp") and the conflict resolution field ("this row was overwritten
+// more recently than what you have"). Deletes are soft (`deletedAt`) so a
+// delete on one device propagates as a tombstone to others instead of just
+// disappearing from one side's payload.
+//
+// subjectId fields are deliberately plain strings with no FK/relation, not
+// enforced referential integrity — the client already treats subject
+// references this loosely (deletion cascades happen in application code,
+// see subjectWorkspace.js), and a real FK would break bulk sync whenever a
+// session for a subject happens to sync before the subject itself does.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  googleSub String   @unique
+  email     String
+  name      String
+  picture   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subjects          Subject[]
+  sessions          ClassSession[]
+  notes             Note[]
+  resources         Resource[]
+  flashcards        Flashcard[]
+  quizzes           Quiz[]
+  assessments       Assessment[]
+  assignments       Assignment[]
+  focusSessions     FocusSession[]
+  settings          UserSettings?
+  term              Term?
+  pushSubscriptions PushSubscription[]
+  notificationLogs  NotificationLogEntry[]
+  refreshTokens     RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Subject {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String
+  priority  Int       @default(2)
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model ClassSession {
+  id              String    @id
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId       String?
+  title           String
+  type            String
+  date            String
+  startTime       String
+  durationMinutes Int
+  priority        Int
+  recurrence      Json?
+  lecturer        String    @default("")
+  room            String    @default("")
+  completions     Json      @default("[]")
+  createdAt       DateTime
+  updatedAt       DateTime  @default(now()) @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId, updatedAt])
+  @@map("sessions")
+}
+
+model Note {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String?
+  title     String
+  body      String    @default("")
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Resource {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String?
+  title     String
+  url       String    @default("")
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Flashcard {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String?
+  front     String
+  back      String
+  srs       Json
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Quiz {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String?
+  title     String
+  questions Json      @default("[]")
+  source    String    @default("generated")
+  attempts  Json      @default("[]")
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Assessment {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String?
+  name      String
+  date      String
+  startTime String?
+  kind      String    @default("exam")
+  weight    Int?
+  createdAt DateTime
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model Assignment {
+  id                String    @id
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId         String?
+  title             String
+  dueDate           String
+  dueTime           String?
+  description       String    @default("")
+  type              String    @default("homework")
+  estimatedMinutes  Int?
+  weight            Int?
+  links             Json      @default("[]")
+  checklist         Json      @default("[]")
+  status            String    @default("not-started")
+  priorityOverride  Int?
+  createdAt         DateTime
+  updatedAt         DateTime  @default(now()) @updatedAt
+  deletedAt         DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+model FocusSession {
+  id             String    @id
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId      String?
+  date           String
+  type           String
+  plannedMinutes Int
+  actualMinutes  Int       @default(0)
+  completed      Boolean   @default(false)
+  startedAt      DateTime
+  endedAt        DateTime?
+  updatedAt      DateTime  @default(now()) @updatedAt
+  deletedAt      DateTime?
+
+  @@index([userId, updatedAt])
+}
+
+// Settings and Term are singletons per user (one row each), unlike the
+// list entities above — upserted by userId rather than by their own id.
+model UserSettings {
+  userId                  String   @id
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyGoalMinutes        Int      @default(60)
+  quietHours              Json     @default("{\"start\":\"22:00\",\"end\":\"07:00\"}")
+  notificationsEnabled    Boolean  @default(false)
+  notifyCategories        Json     @default("{\"classes\":true,\"assignments\":true,\"assessments\":true,\"neglected\":true}")
+  hapticsEnabled          Boolean  @default(true)
+  focusMinutes            Int      @default(25)
+  breakMinutes            Int      @default(5)
+  longBreakMinutes        Int      @default(15)
+  sessionsBeforeLongBreak Int      @default(4)
+  theme                   String   @default("system")
+  // IANA zone name (e.g. "Africa/Lusaka"), captured client-side via
+  // Intl.DateTimeFormat().resolvedOptions().timeZone. The scheduler has no
+  // device of its own to ask what "today" or "10 minutes before class"
+  // means, so it needs this to evaluate reminders in the user's own time
+  // rather than the server's.
+  timezone                String   @default("UTC")
+  updatedAt               DateTime @default(now()) @updatedAt
+}
+
+model Term {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @default("")
+  startDate String?
+  endDate   String?
+  asked     Boolean  @default(false)
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+// One row per browser/device push subscription — a user can have several
+// (phone, laptop), each notified independently.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Server-side mirror of the same dedup/cap bookkeeping notifications.js
+// already does client-side (see MAX_PER_DAY there) — needed here too since
+// the scheduler now fires independently of any open tab.
+model NotificationLogEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  key       String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId, date])
+}

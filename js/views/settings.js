@@ -1,18 +1,19 @@
 import {
-  mutate, exportJSON, importJSON, resetAll, getGoogleClientId, setGoogleClientId, isDefaultGoogleClientId, getCurrentAccount, getKnownAccounts, forgetAccount,
+  mutate, exportJSON, importJSON, resetAll, getGoogleClientId, setGoogleClientId, isDefaultGoogleClientId, getCurrentAccount, getKnownAccounts, forgetAccount, getBackendUrl, setBackendUrl, isBackendConfigured,
 } from '../core/store.js';
 import * as notifications from '../services/notifications.js';
 import { importTimetableCSV, CSV_TEMPLATE } from '../services/csvImport.js';
 import { importTimetableICS } from '../services/icsImport.js';
 import { buildICS } from '../services/icsExport.js';
-import * as googleSync from '../services/googleSync.js';
+import * as backendSync from '../services/backendSync.js';
+import * as pushSubscription from '../services/pushSubscription.js';
 import { delegate, escapeHtml } from '../components/dom.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
 
 let unsubscribeSync = null;
-const viewState = { editingClientId: false };
+const viewState = { editingClientId: false, editingServerUrl: false };
 
 // The moment "the timetable becomes the foundation" is actually visible,
 // instead of a toast that's gone in two seconds: what got created, a
@@ -117,8 +118,21 @@ function relativeTime(iso) {
 function accountSyncSection(state) {
   const clientId = getGoogleClientId();
   const currentAccount = getCurrentAccount();
-  const connected = googleSync.isConnected();
+  const connected = backendSync.isConnected();
   const knownAccounts = getKnownAccounts().filter((a) => a.sub !== currentAccount?.sub);
+
+  if (viewState.editingServerUrl || !isBackendConfigured()) {
+    return `
+      <section class="dash-section">
+        <h2>Account &amp; sync</h2>
+        <p class="settings-note">${isBackendConfigured() ? 'Where your data syncs to and reminders are sent from.' : "Sync and background reminders need your own server (see server/ in the repo — deploy it once, point the app at it here). Without this, everything still works, just on this device only, and reminders only fire while the app is open."}</p>
+        <label class="form-field"><span>Server URL</span><input type="text" id="setServerUrl" placeholder="https://your-server.example.com" value="${escapeHtml(getBackendUrl())}"></label>
+        <div class="settings-actions">
+          <button class="btn btn-primary" data-action="save-server-url">Save</button>
+          ${isBackendConfigured() ? '<button class="btn btn-ghost" data-action="cancel-server-url">Cancel</button>' : ''}
+        </div>
+      </section>`;
+  }
 
   if (viewState.editingClientId) {
     return `
@@ -143,7 +157,7 @@ function accountSyncSection(state) {
           <span class="account-email">${escapeHtml(currentAccount?.email || '')}</span>
         </span>
       </div>
-      <p class="settings-note">Synced ${relativeTime(googleSync.getLastSyncedAt())}</p>
+      <p class="settings-note">Synced ${relativeTime(backendSync.getLastSyncedAt())}</p>
       <div class="settings-actions">
         <button class="btn btn-ghost" data-action="sync-now">${iconMarkup('repeat', { size: 15 })}Sync now</button>
         <button class="btn btn-ghost" data-action="sign-out">Sign out</button>
@@ -172,7 +186,6 @@ function accountSyncSection(state) {
     <section class="dash-section">
       <h2>Account &amp; sync</h2>
       ${statusBlock}
-      <button class="link-btn" data-action="switch-account">Sign in with a different Google account</button>
       ${knownAccounts.length ? `
         <p class="settings-note">Other accounts used on this device:</p>
         <div class="account-list">
@@ -185,6 +198,7 @@ function accountSyncSection(state) {
         </div>
       ` : ''}
       <button class="link-btn" data-action="edit-client-id">Change Client ID</button>
+      <button class="link-btn" data-action="edit-server-url">Change server URL</button>
     </section>`;
 }
 
@@ -288,7 +302,7 @@ export function render(container, { state, navigate }) {
 
     <section class="dash-section">
       <h2>Your data</h2>
-      <p class="settings-note">Everything is stored on this device only. Export a backup regularly.</p>
+      <p class="settings-note">${backendSync.isConnected() ? 'Synced to your server, and still kept on this device too. Export a backup regularly regardless.' : 'Stored on this device only right now. Export a backup regularly, or sign in above to sync it to a server.'}</p>
       <div class="settings-actions">
         <button class="btn btn-ghost" data-action="export">${iconMarkup('download', { size: 15 })}Export backup</button>
         <button class="btn btn-ghost" data-action="import">${iconMarkup('upload', { size: 15 })}Import backup</button>
@@ -298,13 +312,16 @@ export function render(container, { state, navigate }) {
     </section>
   `;
 
-  unsubscribeSync = googleSync.onStatusChange((status) => {
+  unsubscribeSync = backendSync.onStatusChange((status) => {
     if (status.needsReauth) showToast('Session expired — sign in again to resume syncing');
     render(container, { state, navigate });
   });
 
   container.querySelector('#setClientId')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') container.querySelector('[data-action="save-client-id"]')?.click();
+  });
+  container.querySelector('#setServerUrl')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') container.querySelector('[data-action="save-server-url"]')?.click();
   });
 
   delegate(container, 'click', '[data-action="save-client-id"]', () => {
@@ -325,27 +342,46 @@ export function render(container, { state, navigate }) {
     render(container, { state, navigate });
   });
 
-  delegate(container, 'click', '[data-action="sign-in"], [data-action="switch-account"], [data-action="resume-sync"]', async (event, target) => {
-    const selectAccount = target.dataset.action === 'switch-account';
+  delegate(container, 'click', '[data-action="save-server-url"]', () => {
+    const value = container.querySelector('#setServerUrl').value.trim();
+    if (!value) { showToast('Enter a server URL first'); return; }
+    setBackendUrl(value);
+    viewState.editingServerUrl = false;
+    showToast('Server URL saved');
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="cancel-server-url"]', () => {
+    viewState.editingServerUrl = false;
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="edit-server-url"]', () => {
+    viewState.editingServerUrl = true;
+    render(container, { state, navigate });
+  });
+
+  delegate(container, 'click', '[data-action="sign-in"], [data-action="resume-sync"]', async () => {
     try {
       showToast('Opening Google sign-in…');
-      const profile = await googleSync.signIn({ selectAccount });
+      const profile = await backendSync.signIn();
       showToast(`Signed in as ${profile.name}`);
+      if (state.settings.notificationsEnabled) pushSubscription.ensureSubscribed().catch(() => {});
     } catch (error) {
       showToast(error.message || 'Sign-in failed');
     }
     render(container, { state, navigate });
   });
 
-  delegate(container, 'click', '[data-action="sign-out"]', () => {
-    googleSync.signOut();
+  delegate(container, 'click', '[data-action="sign-out"]', async () => {
+    await backendSync.signOut();
     showToast('Signed out — back to local storage');
     render(container, { state, navigate });
   });
 
   delegate(container, 'click', '[data-action="sync-now"]', async () => {
     try {
-      await googleSync.syncNow();
+      await backendSync.syncNow();
       showToast('Synced');
     } catch (error) {
       showToast('Sync failed');
@@ -354,7 +390,7 @@ export function render(container, { state, navigate }) {
   });
 
   delegate(container, 'click', '[data-action="forget-account"]', async (event, target) => {
-    const ok = await confirmModal({ message: 'Remove this account and its cached data from this device? Anything already synced to Drive is untouched.' });
+    const ok = await confirmModal({ message: 'Remove this account and its cached data from this device? Anything already synced to the server is untouched.' });
     if (!ok) return;
     forgetAccount(target.dataset.sub);
     render(container, { state, navigate });
@@ -402,8 +438,12 @@ export function render(container, { state, navigate }) {
         showToast('Notifications were not allowed');
         return;
       }
+      mutate((s) => { s.settings.notificationsEnabled = true; });
+      pushSubscription.ensureSubscribed().catch(() => {});
+    } else {
+      mutate((s) => { s.settings.notificationsEnabled = false; });
+      pushSubscription.unsubscribe().catch(() => {});
     }
-    mutate((s) => { s.settings.notificationsEnabled = e.target.checked; });
   });
 
   delegate(container, 'click', '[data-action="test-notification"]', async () => {

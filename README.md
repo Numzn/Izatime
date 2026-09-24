@@ -108,10 +108,12 @@ within them:
   data lives in `localStorage` with an automatic rolling backup.
 - **🌗 Theme** — light/dark/system, plus data export/import/reset in
   Settings.
-- **🔄 Google Drive sync** *(optional)* — sign in to sync your timetable to
-  your own Google Drive (minimal `drive.appdata` scope only) and pick it up
-  on another device, with timestamp-based conflict resolution and
-  retry-with-backoff. Fully optional and works out of the box; the app is
+- **🔄 Sync + real background reminders** *(optional, needs `server/`)* —
+  sign in with Google to sync your timetable to your own backend and pick
+  it up on another device, with per-record conflict resolution (not a
+  single overwritten file). The same backend runs a scheduler that pushes
+  reminders via Web Push even when the app is closed — the thing a
+  client-only PWA structurally cannot do. Fully optional; the app is
   completely offline-capable without it. See below.
 
 ### About the "AI"
@@ -176,12 +178,15 @@ Izatime/
 │   │   ├── icsImport.js          RFC5545 calendar (.ics) import
 │   │   ├── csvImport.js          bulk timetable import from CSV
 │   │   ├── timetableImport.js    subject-resolution shared by CSV + .ics import
-│   │   ├── googleAuth.js         Google Identity Services sign-in/token
-│   │   ├── driveSync.js          Drive appDataFolder file read/write
-│   │   └── googleSync.js         orchestrates sign-in, pull-or-seed, auto-push
+│   │   ├── googleAuth.js         Google Identity Services ID-token sign-in
+│   │   ├── backendApi.js         thin fetch wrapper for the backend
+│   │   ├── backendAuth.js        access/refresh token lifecycle
+│   │   ├── backendSync.js        diff-based per-record push/pull sync engine
+│   │   └── pushSubscription.js   Web Push subscribe/unsubscribe (PushManager)
 │   ├── components/               dom.js, toast.js, modal.js, charts.js, nav.js, sessionForm.js (shared add/edit-class form)
 │   └── views/                    dashboard.js (Today), timetable.js, subjectWorkspace.js, focus.js, analyticsView.js, settings.js
-└── icons/                       PWA icons (72px–512px)
+├── icons/                       PWA icons (72px–512px)
+└── server/                      optional backend — auth, sync, Web Push scheduler (see below)
 ```
 
 Each service is a pure function layer over the store's state — no view
@@ -214,71 +219,77 @@ between devices or restoring after a reset.
 
 ---
 
-## 🔄 Google Drive sync
+## 🔄 Backend: sync + real background reminders
 
-Entirely optional — without it, everything still works, just tied to one
-browser on one device. **Settings → Account & sync → Sign in with Google**
-works out of the box on this deployment; no setup needed. Each person who
-signs in gets their own private copy of the app's data synced to their own
-Google Drive, in the hidden `appDataFolder` (invisible in their normal
-Drive, and inaccessible to this app or anyone else) — nothing is shared
-between accounts, and signing in on a shared device never shows someone
-else's timetable unless they sign in themselves.
+Entirely optional — without it, everything still works exactly as
+described above, just tied to one browser on one device, and reminders
+only fire while the app is open (see [Troubleshooting](#-troubleshooting)
+for why). The backend in `server/` closes both gaps: it's the source of
+truth for synced data, and it runs the scheduler that actually delivers
+reminders in the background via [Web Push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API).
 
-**Minimal scope, no server.** The app requests exactly one OAuth scope,
-`drive.appdata` — enough to read/write its own hidden sync file and
-nothing else in your Drive. There's no backend: the browser talks to
-Google's APIs directly using [Google Identity Services](https://developers.google.com/identity/gsi/web)
-(not the deprecated `gapi.auth2`), so this stays a static site with no
-Client Secret anywhere. Even the "who's signed in" name/email/photo shown
-in the app comes from Drive's own `about.get` endpoint, which works under
-`drive.appdata` alone — no separate identity scope required.
+### Why this needs a server at all
 
-**How sync behaves:**
-- **Sign in** pulls your existing synced data if Drive already has some
-  newer than what's on this device, or seeds Drive from this device if
-  not (see conflict resolution below).
-- **Automatic backup** — every change auto-syncs to Drive a few seconds
-  after you make it (debounced, so rapid edits don't spam the network).
-- **Automatic restore on new devices** — sign in anywhere and your Drive
-  copy comes down automatically if it's newer than the empty/local state.
-- **Manual "Sync now"** and a **last-synced timestamp** are in Settings;
-  a small dot on the account icon in the header shows live status (grey
-  = not syncing, amber pulse = syncing, green = synced, red = error/needs
+A pure client-side PWA has no process running when the tab isn't open —
+there's nothing to check "is a class starting in 10 minutes?" once you've
+backgrounded the app. The only way to deliver a notification at a precise
+future time regardless of whether the app is open is for *something else*
+to hold that schedule and push to the browser when the moment arrives.
+That's what `server/` is: it owns the canonical copy of your data, and a
+minute-by-minute scheduler (`server/src/jobs/reminderScheduler.js`) that
+mirrors the exact same tiered reminder logic as `notifications.js`
+client-side, evaluated in your own timezone, and delivers via Web Push.
+
+### Setting it up
+
+1. Deploy `server/` (see `server/README.md` for the full setup —
+   Postgres, environment variables, running migrations, generating VAPID
+   keys, and hosting options).
+2. In the app, **Settings → Account & sync → Server URL**, paste in
+   wherever you deployed it.
+3. **Sign in with Google.** The same Google Identity Services flow as
+   before, but now it exchanges a Google ID token for a session with your
+   own backend (verified server-side against Google's public keys) rather
+   than requesting a Drive-scoped access token — there's no Google Drive
+   involved at all anymore.
+
+### How sync behaves
+
+- **Per-record, not whole-file.** Every subject, class, note, flashcard,
+  etc. syncs and resolves conflicts independently (last-write-wins on
+  that one record) — two devices editing *different* things offline
+  between syncs no longer risk one clobbering the other's edits, the way
+  a single overwritten JSON blob would.
+- **Automatic** — every change auto-syncs a few seconds after you make it
+  (debounced), plus a background pull every 5 minutes to pick up changes
+  made from another device even when nothing changed locally here.
+- **Manual "Sync now"** and a **last-synced timestamp** are in Settings; a
+  small dot on the account icon in the header shows live status (grey =
+  not syncing, amber pulse = syncing, green = synced, red = error/needs
   sign-in again).
 - **Sign out** stops syncing and drops back to local-only storage — your
   data for that account stays cached on the device either way.
-- **Conflict resolution**: every save carries its own timestamp. On sign-in
-  and before every sync, the app compares the local timestamp against
-  Drive's copy — whichever is actually newer wins. If another device
-  synced more recently than this one knows about, that version is pulled
-  instead of being overwritten.
-- **Retries**: Drive requests retry up to 3 times with exponential backoff
-  on network errors, rate limiting (429), or server errors (5xx). A
-  rejected session (401) isn't retried — instead sync pauses and the UI
-  asks you to sign in again.
-- **Offline-first, always**: Drive sync is best-effort on top of
-  localStorage, which remains the primary datastore. No network, no
-  Google account, and no Client ID at all — the app works exactly the
-  same, just without the cross-device piece.
-
-Because this uses a client-side-only OAuth flow (no server to hold a
-refresh token), sync pauses after closing the browser — reopening the app
-shows your last-synced data immediately, but you'll need to tap **Resume
-sync** once to reconnect.
+- **Offline-first, always**: sync is best-effort on top of `localStorage`,
+  which remains the primary datastore. No network, no server, no Google
+  account at all — the app works exactly the same, just without the
+  cross-device piece and without background reminders.
+- **Deletes propagate** as tombstones (soft-deleted server-side), so
+  deleting something on one device removes it from others too, instead of
+  just disappearing from one side's next sync payload.
 
 ### Using your own Google Cloud project (forks / other deployments)
 
 The shipped Client ID is tied to this app's authorized origin. If you fork
 this project to deploy it elsewhere, create your own free **Google OAuth
-Client ID** and paste it into Settings → Account & sync → Change Client ID:
+Client ID** and paste it into Settings → Account & sync → Change Client ID
+(and into `server/.env`'s `GOOGLE_CLIENT_ID`, so the backend verifies
+tokens against the same one):
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or reuse one).
-2. **APIs & Services → Library** → search **Google Drive API** → Enable.
-3. **APIs & Services → OAuth consent screen** → choose **External** → fill in an app name and your email → save. You can leave it in **Testing** mode and add your own (and any friends') Google account under **Test users** — no Google verification needed for personal/small-group use.
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Web application**.
-5. Under **Authorized JavaScript origins**, add the exact URL you serve the app from, e.g. `https://yourname.github.io` (no path, no trailing slash) — and `http://localhost:8000` too if you want sync to work locally.
-6. Copy the generated Client ID (`....apps.googleusercontent.com`) and paste it into the app.
+2. **APIs & Services → OAuth consent screen** → choose **External** → fill in an app name and your email → save. You can leave it in **Testing** mode and add your own (and any friends') Google account under **Test users** — no Google verification needed for personal/small-group use.
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Web application**.
+4. Under **Authorized JavaScript origins**, add the exact URL you serve the app from, e.g. `https://yourname.github.io` (no path, no trailing slash) — and `http://localhost:8000` too if you want sign-in to work locally.
+5. Copy the generated Client ID (`....apps.googleusercontent.com`) and paste it into the app (and the server's `.env`).
 
 Leaving the field blank reverts to the built-in Client ID.
 
@@ -322,9 +333,9 @@ Any static HTTPS host works — there's no backend.
 ## 🔧 Troubleshooting
 
 - **Stale UI after an update**: bump `CACHE_NAME` in `sw.js` so clients fetch fresh assets.
-- **Notifications not firing**: check Settings shows "Allowed"; browsers block `Notification` permission requests outside a user gesture, quiet hours, or once 3/day have already fired.
-- **Lost data**: local state lives under `izatime:data:local` (signed-out) or `izatime:data:<account-id>` per signed-in account, each with a rolling backup at the matching `izatime:backup:*` key. Export a backup from Settings regularly regardless — Drive sync is optional and local storage can still be cleared by the browser.
-- **Sync says "paused"**: this is expected after closing the browser (see above) — tap **Resume sync** in Settings → Account & sync.
+- **Notifications not firing**: check Settings shows "Allowed"; browsers block `Notification` permission requests outside a user gesture, quiet hours, or once 3/day have already fired. If reminders only ever fire while the app is open and never in the background, that's expected *without* the backend configured — a pure client-side PWA has nothing running to check the clock once the tab isn't open; see [Backend: sync + real background reminders](#-backend-sync--real-background-reminders).
+- **Lost data**: local state lives under `izatime:data:local` (signed-out) or `izatime:data:<account-id>` per signed-in account, each with a rolling backup at the matching `izatime:backup:*` key. Export a backup from Settings regularly regardless — the backend is optional and local storage can still be cleared by the browser.
+- **Sync says "needs sign-in"**: the backend session expired or was revoked — sign in again in Settings → Account & sync. Unlike the old Drive-based flow, a normal reload doesn't require this — the refresh token persists and syncing resumes automatically.
 
 ---
 

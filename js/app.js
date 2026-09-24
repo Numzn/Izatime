@@ -2,7 +2,8 @@ import { loadStore, getState, subscribe, getCurrentAccount } from './core/store.
 import { renderNav, ROUTES } from './components/nav.js';
 import { registerServiceWorker, initOfflineDetection, initInstallPrompt } from './pwa.js';
 import * as notifications from './services/notifications.js';
-import * as googleSync from './services/googleSync.js';
+import * as backendSync from './services/backendSync.js';
+import * as pushSubscription from './services/pushSubscription.js';
 import { iconMarkup } from './components/icons.js';
 import { escapeHtml } from './components/dom.js';
 
@@ -41,7 +42,7 @@ function updateAccountIndicator(syncExtra = {}) {
   if (!account) { btn.style.display = 'none'; return; }
   btn.style.display = '';
 
-  const connected = googleSync.isConnected();
+  const connected = backendSync.isConnected();
   const syncing = !!syncExtra.syncing;
   const hasError = !!syncExtra.error || !!syncExtra.needsReauth;
 
@@ -94,6 +95,13 @@ function initHeader() {
   document.getElementById('accountIndicator')?.addEventListener('click', () => navigate('settings'));
 }
 
+// The backend's own scheduler (server/src/jobs/reminderScheduler.js) now
+// delivers reminders via Web Push independent of whether this tab is even
+// open — that's what actually fixes reminders dying the moment the app is
+// backgrounded. This client-side tick is kept anyway as a same-tab
+// fallback: it's instant (no push round-trip latency) whenever the app
+// happens to be open, and it's the only path at all when no backend is
+// configured yet (see core/store.js getBackendUrl()).
 function startNotificationLoop() {
   setInterval(() => {
     try {
@@ -120,7 +128,10 @@ function initApp() {
     startNotificationLoop();
 
     subscribe(() => renderCurrentView());
-    googleSync.onStatusChange((status) => updateAccountIndicator(status));
+    backendSync.onStatusChange((status) => updateAccountIndicator(status));
+    backendSync.resumeSession().then((user) => {
+      if (user) pushSubscription.ensureSubscribed().catch(() => {});
+    });
     navigate('dashboard');
   } catch (error) {
     console.error('App failed to start:', error);
