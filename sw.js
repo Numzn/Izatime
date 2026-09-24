@@ -1,4 +1,10 @@
-const CACHE_NAME = 'numzstudy-v4.1';
+const CACHE_NAME = 'numzstudy-v4.2';
+
+// Top-level route names the backend mounts in server/src/app.js. When the
+// all-in-one Docker image serves this page, those routes live on the same
+// origin as the app shell, so the fetch handler below has to leave them alone.
+const BACKEND_ROUTES = new Set(['auth', 'sync', 'push', 'health']);
+
 const ASSETS = [
   './',
   './index.html',
@@ -97,7 +103,15 @@ self.addEventListener('fetch', event => {
   // Never intercept cross-origin requests (Google Sign-In, Drive API,
   // webfonts) — those carry auth tokens or need to always hit the network,
   // and have no business going through our same-origin app-shell cache.
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Same-origin backend calls (all-in-one Docker image) are per-user and
+  // time-sensitive: this cache is keyed by URL alone, so a cached /auth/me
+  // would be replayed to whichever account signs in next on this device, and
+  // a cached /health would keep reporting "up" after the server goes down.
+  // Never answer these from the app-shell cache.
+  if (BACKEND_ROUTES.has(url.pathname.split('/')[1])) return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
