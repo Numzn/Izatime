@@ -43,6 +43,13 @@ export function createApp() {
     // to that baseline; it just avoids adding a new restriction on top of
     // functionality that was already shipping.
     contentSecurityPolicy: false,
+    // Helmet's default COOP, `same-origin`, severs the opener link of every
+    // window this page opens. Google Identity Services opens its sign-in
+    // popup that way whenever the browser isn't using FedCM (Firefox, Safari),
+    // and Google's docs warn that a COOP which doesn't allow popups "breaks
+    // communication between windows, leading to a blank pop-up window".
+    // `same-origin-allow-popups` keeps the isolation for everything else.
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   }));
   app.use(cors({
     origin: env.corsOrigins.length ? env.corsOrigins : false,
