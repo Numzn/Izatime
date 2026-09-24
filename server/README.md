@@ -1,6 +1,6 @@
-# Digital Timetable — backend
+# NumzStudy — backend
 
-Optional backend for the [Digital Timetable](../README.md) PWA. Three jobs:
+Optional backend for the [NumzStudy](../README.md) PWA. Three jobs:
 
 1. **Auth** — verifies the Google ID token the frontend already obtains via
    Google Identity Services, and issues its own access/refresh JWT session.

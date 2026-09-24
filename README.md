@@ -1,4 +1,4 @@
-# Digital Timetable
+# NumzStudy
 
 A calm, offline-first class timetable and academic planner PWA. Its mission:
 help students never miss a class, assignment, or exam. Plan your timetable,

@@ -336,7 +336,7 @@ export function exportJSON() {
 
 export function importJSON(text) {
   const parsed = JSON.parse(text);
-  if (!isValidState(parsed)) throw new Error('That file does not look like a Digital Timetable backup.');
+  if (!isValidState(parsed)) throw new Error('That file does not look like a NumzStudy backup.');
   state = migrate(parsed);
   recomputeDerived(state);
   persist(state);

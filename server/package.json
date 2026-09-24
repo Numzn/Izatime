@@ -1,7 +1,7 @@
 {
-  "name": "izatime-server",
+  "name": "numzstudy-server",
   "version": "1.0.0",
-  "description": "Backend for Digital Timetable: auth, per-record sync, and Web Push reminder delivery.",
+  "description": "Backend for NumzStudy: auth, per-record sync, and Web Push reminder delivery.",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

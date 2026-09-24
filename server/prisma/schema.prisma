@@ -1,4 +1,4 @@
-// Digital Timetable backend schema.
+// NumzStudy backend schema.
 //
 // Sync model: every syncable entity carries a client-supplied `id` (the app
 // already generates UUIDs client-side via core/id.js, so the server never

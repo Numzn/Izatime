@@ -126,7 +126,11 @@ export function importTimetableICS(state, icsText) {
   events.forEach((event, index) => {
     const label = event.summary || `Event ${index + 1}`;
 
-    if (event.uid && event.uid.includes('@digital-timetable')) {
+    // Matches both suffixes: @numzstudy is what icsExport.js writes now,
+    // @digital-timetable is what it wrote before the app was renamed —
+    // still checked so a .ics exported before the rename doesn't come
+    // back in as duplicate classes on re-import.
+    if (event.uid && (event.uid.includes('@numzstudy') || event.uid.includes('@digital-timetable'))) {
       ctx.result.skipped.push(`"${label}": already in this app (its own export), skipped`);
       return;
     }

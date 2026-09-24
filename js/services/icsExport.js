@@ -46,12 +46,12 @@ function vevent(lines) {
 // host one).
 export function buildICS(state) {
   const subjectName = (id) => state.subjects.find((s) => s.id === id)?.name || '';
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Digital Timetable//EN', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//NumzStudy//EN', 'CALSCALE:GREGORIAN'];
 
   state.sessions.forEach((session) => {
     const endTime = addMinutesToHHMM(session.startTime, session.durationMinutes);
     const eventLines = [
-      `UID:session-${session.id}@digital-timetable`,
+      `UID:session-${session.id}@numzstudy`,
       `DTSTAMP:${nowStampUTC()}`,
       `DTSTART:${dateTimeStamp(session.date, session.startTime)}`,
       `DTEND:${dateTimeStamp(session.date, endTime)}`,
@@ -72,7 +72,7 @@ export function buildICS(state) {
   state.assessments.forEach((assessment) => {
     const timed = !!assessment.startTime;
     const eventLines = [
-      `UID:assessment-${assessment.id}@digital-timetable`,
+      `UID:assessment-${assessment.id}@numzstudy`,
       `DTSTAMP:${nowStampUTC()}`,
       timed ? `DTSTART:${dateTimeStamp(assessment.date, assessment.startTime)}` : `DTSTART;VALUE=DATE:${dateStamp(assessment.date)}`,
       timed ? `DTEND:${dateTimeStamp(assessment.date, addMinutesToHHMM(assessment.startTime, 60))}` : `DTEND;VALUE=DATE:${dateStamp(addDays(assessment.date, 1))}`,
@@ -85,7 +85,7 @@ export function buildICS(state) {
   state.assignments.filter((a) => !isAssignmentDone(a)).forEach((assignment) => {
     const timed = !!assignment.dueTime;
     const eventLines = [
-      `UID:assignment-${assignment.id}@digital-timetable`,
+      `UID:assignment-${assignment.id}@numzstudy`,
       `DTSTAMP:${nowStampUTC()}`,
       timed ? `DTSTART:${dateTimeStamp(assignment.dueDate, assignment.dueTime)}` : `DTSTART;VALUE=DATE:${dateStamp(assignment.dueDate)}`,
       timed ? `DTEND:${dateTimeStamp(assignment.dueDate, addMinutesToHHMM(assignment.dueTime, 30))}` : `DTEND;VALUE=DATE:${dateStamp(addDays(assignment.dueDate, 1))}`,
