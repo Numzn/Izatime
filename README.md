@@ -151,6 +151,8 @@ Izatime/
 ├── index.html                 ← App shell only (header, nav, mount points)
 ├── manifest.json               ← PWA config
 ├── sw.js                       ← Service worker (offline cache)
+├── Dockerfile                  ← all-in-one image (frontend + server/ + Postgres)
+├── docker-entrypoint.sh         ← boots Postgres, secrets, migrations, then the server
 ├── css/
 │   ├── base.css                 design tokens, reset, app shell, splash
 │   ├── components.css           buttons, forms, chips, modal, toast, charts
@@ -322,11 +324,53 @@ Any modern evergreen browser (Chrome, Firefox, Safari, Edge). ES modules require
 
 ## 🚀 Deployment
 
+### Frontend only (no sync, no background reminders)
+
 **GitHub Pages**: Settings → Pages → Deploy from branch → `master` / `(root)` → live at `https://numzn.github.io/Izatime/`.
 
 **Netlify**: drag the project folder onto [netlify.com/drop](https://netlify.com/drop).
 
-Any static HTTPS host works — there's no backend.
+Any static HTTPS host works — the app is fully offline-capable on its own,
+same as always. See [Backend: sync + real background reminders](#-backend-sync--real-background-reminders)
+for what adding the backend gets you.
+
+### One image, everything included
+
+`Dockerfile` at the repo root bundles the frontend, the backend, and a
+local Postgres into a single image — one container is the whole app,
+server included:
+
+```bash
+docker build -t numzstudy .
+docker run -d \
+  -p 8787:8787 \
+  -e GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com" \
+  -v numzstudy-data:/data \
+  --name numzstudy \
+  numzstudy
+```
+
+Open `http://localhost:8787` — that's the app, and it's already pointed
+at its own backend with nothing to configure in Settings (the page
+detects it's being served by its own backend and skips the "Server URL"
+prompt entirely). `GOOGLE_CLIENT_ID` is the one thing you must supply
+yourself (see [Using your own Google Cloud project](#using-your-own-google-cloud-project-forks--other-deployments)
+above) — everything else (Postgres, JWT signing secrets, a VAPID
+keypair for push) is created automatically on first boot and persisted
+under `/data`, so `-v numzstudy-data:/data` is the one volume worth
+keeping across restarts/upgrades. Skip it and you get a working
+container that forgets everything (including its own signing secrets)
+every time it's recreated.
+
+Point `DATABASE_URL` at an external Postgres instead (`-e
+DATABASE_URL=postgresql://...`) to skip the bundled one — worth doing
+for anything beyond personal/small-group use, since a single-container
+Postgres has no separate backup/HA story of its own.
+
+Separate hosting (frontend on a static host, `server/` deployed on its
+own) still works exactly as described in the Backend section above; the
+one-image path is just the fastest way to get both running somewhere
+with a single command.
 
 ---
 
