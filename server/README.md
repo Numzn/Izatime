@@ -92,9 +92,15 @@ Fly.io, a VPS, etc. The general shape:
 4. Point the frontend at the deployed URL: Settings → Account & sync →
    Server URL in the app.
 
-There's no Dockerfile in this repo yet — the app has no build step, so a
-platform's Node buildpack (Railway/Render's default) works without one. Add
-one if your host needs it.
+There's no build step, so a platform's Node buildpack (Railway/Render's
+default) works without needing a Dockerfile for this directory on its own.
+
+**Or: the one-image path.** `Dockerfile` at the repo root bundles this
+server together with the frontend and a local Postgres into a single
+image — see the main README's [One image, everything included](../README.md#one-image-everything-included)
+section. That's the faster route if you want both the app and its backend
+running somewhere with a single `docker run`, rather than deploying this
+directory as its own standalone service.
 
 ## Testing without a real Google sign-in
 

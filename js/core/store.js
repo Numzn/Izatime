@@ -193,13 +193,24 @@ export function setGoogleClientId(clientId) {
 
 // The backend has no built-in default the way the Google Client ID does —
 // it isn't a public identifier safe to ship in a public repo, it's wherever
-// you deployed server/ to. Sync/reminders stay off until this is set.
+// you deployed server/ to. Sync/reminders stay off until this is set,
+// *unless* this exact page was served by its own bundled backend (the
+// all-in-one Docker image — see Dockerfile), which server/src/app.js
+// marks with a global so this can safely default to "wherever this page
+// came from" instead of asking the user to paste in a URL that's just
+// their own address.
+function sameOriginBackend() {
+  return typeof window !== 'undefined' && window.__NUMZSTUDY_SAME_ORIGIN_BACKEND__ === true;
+}
+
 export function getBackendUrl() {
-  return readConfig().backendUrl || '';
+  const configured = readConfig().backendUrl;
+  if (configured) return configured;
+  return sameOriginBackend() ? window.location.origin : '';
 }
 
 export function isBackendConfigured() {
-  return !!readConfig().backendUrl;
+  return !!readConfig().backendUrl || sameOriginBackend();
 }
 
 export function setBackendUrl(url) {
