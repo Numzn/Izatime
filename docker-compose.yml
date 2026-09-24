@@ -1,0 +1,70 @@
+# NumzStudy on NumzLab (Engineering Platform).
+#
+# One container serves the static PWA and the Node/Express backend from the same
+# origin (README: "One image, everything included"), with the database bundled
+# in the image: Postgres runs inside the container and keeps its data in the
+# `numzstudy_data` volume. That is the app's own single-container design and it
+# suits one small app. The session and push secrets live in .env (the entrypoint
+# uses them as given when all four are set), so the volume holds only the
+# database. Backups therefore need two things: a pg_dump taken from the running
+# container, and a copy of this file plus .env.
+#
+# Host ports bind explicit interfaces, never 0.0.0.0 (platform networking
+# standard). numzlab-platform-gateway reaches this container through
+# host.docker.internal, which resolves to the Docker bridge gateway rather than
+# loopback, so it needs both binds. NUMZSTUDY_GATEWAY_BIND_IP is a discovered
+# runtime value, not a constant:
+#   docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'
+#
+# Deploy:  cp .env.example .env  (fill it in, chmod 600)  &&  docker compose up -d --build
+
+services:
+  numzstudy:
+    build: .
+    image: numzstudy
+    container_name: numzstudy
+    restart: unless-stopped
+    # tini as PID 1: reaps zombies and forwards SIGTERM/SIGINT to the entrypoint,
+    # which stops Node and then the bundled Postgres cleanly.
+    init: true
+    # `pg_ctl stop -m fast` on a small database takes a second or two. The extra
+    # headroom is for a bigger one: SIGKILL mid-shutdown forces crash recovery
+    # on the next start.
+    stop_grace_period: 30s
+    environment:
+      PORT: "8787"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}
+      # All four are required here so a missing one fails loudly at `compose up`
+      # instead of silently falling back to secrets generated inside the container.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:?set VAPID_PUBLIC_KEY in .env}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:?set VAPID_PRIVATE_KEY in .env}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:?set VAPID_SUBJECT in .env}
+      # Empty on purpose: the frontend is always served from this same origin,
+      # so no cross-origin caller needs CORS.
+      CORS_ORIGINS: ${NUMZSTUDY_CORS_ORIGINS:-}
+      # DATABASE_URL is deliberately not set: without it the entrypoint starts
+      # the bundled Postgres.
+    ports:
+      # Loopback — direct host-level access.
+      - "127.0.0.1:${NUMZSTUDY_HTTP_PORT:-8787}:8787"
+      # Platform Gateway reachability (see header).
+      - "${NUMZSTUDY_GATEWAY_BIND_IP:?set NUMZSTUDY_GATEWAY_BIND_IP in .env}:${NUMZSTUDY_HTTP_PORT:-8787}:8787"
+    volumes:
+      - data:/data
+    healthcheck:
+      # /health answers 200 only when the database is reachable.
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s   # first boot runs initdb and the migrations before the server listens
+
+volumes:
+  data:
+    name: numzstudy_data
