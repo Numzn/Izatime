@@ -5,7 +5,7 @@ import { getNextSession, getSessionsForDate } from '../services/scheduler.js';
 import { getAssignmentsDueWithin, getUpcomingAssessments } from '../services/assignments.js';
 import { getNextFreePeriod } from '../services/freeTime.js';
 import { getRecommendations } from '../services/aiCoach.js';
-import { escapeHtml, delegate } from '../components/dom.js';
+import { escapeHtml, delegate, clearDelegated } from '../components/dom.js';
 import { iconMarkup } from '../components/icons.js';
 
 const TYPE_ICON = { school: 'graduation-cap', study: 'book', 'exam-prep': 'file-text' };
@@ -45,6 +45,7 @@ export function destroy() {
 
 export function render(container, { state, navigate }) {
   destroy();
+  clearDelegated(container);
 
   const dateKey = todayKey();
   const nowMinutes = minutesFromHHMM(nowHHMM());

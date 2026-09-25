@@ -2,7 +2,7 @@ import { last7Days, todayKey } from '../core/dates.js';
 import { getState } from '../core/store.js';
 import { getFocusMinutesForDate } from '../services/analytics.js';
 import * as focusTimer from '../services/focusTimer.js';
-import { escapeHtml, delegate } from '../components/dom.js';
+import { escapeHtml, delegate, clearDelegated } from '../components/dom.js';
 import { barChart } from '../components/charts.js';
 import { showToast } from '../components/toast.js';
 import { vibrate, PATTERNS } from '../services/haptics.js';
@@ -55,6 +55,7 @@ export function destroy() {
 
 export function render(container, { state, params }) {
   destroy();
+  clearDelegated(container);
 
   const dateKey = todayKey();
   const todayFocus = state.focusSessions.filter((f) => f.date === dateKey && f.type === 'focus');

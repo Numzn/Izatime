@@ -4,7 +4,7 @@ import {
 import { mutate } from '../core/store.js';
 import { getSessionsForDate, toggleCompletion } from '../services/scheduler.js';
 import { getAssignmentsDueOn, getAssessmentsOn } from '../services/assignments.js';
-import { escapeHtml, delegate } from '../components/dom.js';
+import { escapeHtml, delegate, clearDelegated } from '../components/dom.js';
 import { openSessionForm } from '../components/sessionForm.js';
 import { iconMarkup } from '../components/icons.js';
 import { vibrate, PATTERNS } from '../services/haptics.js';
@@ -117,6 +117,7 @@ function renderMonthBlock(state, today) {
 }
 
 export function render(container, { state, navigate }) {
+  clearDelegated(container);
   const agenda = buildAgenda(state, viewState.selectedDate);
   const today = todayKey();
 
