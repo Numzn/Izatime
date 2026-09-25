@@ -1,7 +1,7 @@
 import {
   todayKey, minutesFromHHMM, nowHHMM, diffInDays, formatDayLabel, formatDueLabel,
 } from '../core/dates.js';
-import { getNextSession, getSessionsForDate } from '../services/scheduler.js';
+import { getNextSession, getCurrentSession, getSessionsForDate } from '../services/scheduler.js';
 import { getAssignmentsDueSoonOrOverdue, getUpcomingAssessments } from '../services/assignments.js';
 import { getNextFreePeriod } from '../services/freeTime.js';
 import { getRecommendations } from '../services/aiCoach.js';
@@ -27,14 +27,27 @@ function formatCountdown(minsAway) {
   return mins ? `in ${hours}h ${mins}m` : `in ${hours}h`;
 }
 
-function updateCountdownDOM(container, next, dateKey) {
+function formatEndsIn(minsLeft) {
+  if (minsLeft <= 0) return 'Ending now';
+  if (minsLeft < 60) return `ends in ${minsLeft}m`;
+  const hours = Math.floor(minsLeft / 60);
+  const mins = minsLeft % 60;
+  return mins ? `ends in ${hours}h ${mins}m` : `ends in ${hours}h`;
+}
+
+function updateCountdownDOM(container, hero, dateKey) {
   const slot = container.querySelector('#nextClassCountdown');
-  if (!slot || !next) return;
-  if (next.dateKey !== dateKey) {
-    slot.textContent = formatDayLabel(next.dateKey).split(',')[0];
+  if (!slot || !hero) return;
+  if (hero.isCurrent) {
+    const end = minutesFromHHMM(hero.session.startTime) + hero.session.durationMinutes;
+    slot.textContent = formatEndsIn(end - minutesFromHHMM(nowHHMM()));
     return;
   }
-  const minsAway = minutesFromHHMM(next.session.startTime) - minutesFromHHMM(nowHHMM());
+  if (hero.dateKey !== dateKey) {
+    slot.textContent = formatDayLabel(hero.dateKey).split(',')[0];
+    return;
+  }
+  const minsAway = minutesFromHHMM(hero.session.startTime) - minutesFromHHMM(nowHHMM());
   slot.textContent = formatCountdown(minsAway);
 }
 
@@ -46,10 +59,16 @@ export function destroy() {
 export function render(container, { state, navigate }) {
   destroy();
   clearDelegated(container);
+  const scrollTop = container.scrollTop;
 
   const dateKey = todayKey();
   const nowMinutes = minutesFromHHMM(nowHHMM());
-  const next = getNextSession(state, { fromDateKey: dateKey, fromMinutes: nowMinutes });
+  const current = getCurrentSession(state, dateKey, nowMinutes);
+  // Only look ahead for "next" when nothing's happening right now — a
+  // class in progress is what the hero should show, not what comes after
+  // it (see getCurrentSession's doc comment).
+  const next = current ? null : getNextSession(state, { fromDateKey: dateKey, fromMinutes: nowMinutes });
+  const hero = current ? { session: current.session, dateKey, isCurrent: true } : (next ? { ...next, isCurrent: false } : null);
 
   const remainingToday = getSessionsForDate(state, dateKey).filter(
     (entry) => !entry.completed && minutesFromHHMM(entry.session.startTime) > nowMinutes && entry.session.id !== next?.session.id,
@@ -68,13 +87,13 @@ export function render(container, { state, navigate }) {
 
   container.innerHTML = `
     <section class="today-hero">
-      ${next ? `
-        <button class="next-class-card" data-action="open-subject" data-subject="${next.session.subjectId || ''}">
-          <div class="next-class-icon">${iconMarkup(TYPE_ICON[next.session.type] || 'book', { size: 20 })}</div>
+      ${hero ? `
+        <button class="next-class-card${hero.isCurrent ? ' is-current' : ''}" data-action="open-subject" data-subject="${hero.session.subjectId || ''}">
+          <div class="next-class-icon">${iconMarkup(TYPE_ICON[hero.session.type] || 'book', { size: 20 })}</div>
           <div class="next-class-body">
-            <span class="next-class-label">Next class</span>
-            <span class="next-class-title">${escapeHtml(next.session.title)}</span>
-            <span class="next-class-meta">${escapeHtml(subjectName(state, next.session.subjectId))}${next.session.room ? ` · ${escapeHtml(next.session.room)}` : ''}${next.session.lecturer ? ` · ${escapeHtml(next.session.lecturer)}` : ''}</span>
+            <span class="next-class-label">${hero.isCurrent ? 'In progress' : 'Next class'}</span>
+            <span class="next-class-title">${escapeHtml(hero.session.title)}</span>
+            <span class="next-class-meta">${escapeHtml(subjectName(state, hero.session.subjectId))}${hero.session.room ? ` · ${escapeHtml(hero.session.room)}` : ''}${hero.session.lecturer ? ` · ${escapeHtml(hero.session.lecturer)}` : ''}</span>
           </div>
           <span class="next-class-countdown" id="nextClassCountdown">—</span>
         </button>
@@ -134,8 +153,18 @@ export function render(container, { state, navigate }) {
     ` : ''}
   `;
 
-  updateCountdownDOM(container, next, dateKey);
-  if (next) countdownTimer = setInterval(() => updateCountdownDOM(container, next, dateKey), 60000);
+  container.scrollTop = scrollTop;
+  updateCountdownDOM(container, hero, dateKey);
+
+  // `next`, remainingToday, dueSoon, freePeriod and suggestion are all only
+  // ever computed at render time. Patching just the countdown text on a
+  // tick left everything else stale on a screen left open — including the
+  // countdown itself once minsAway went negative (formatCountdown just
+  // says "Starting now" forever for any minsAway <= 0, so a class in
+  // progress, or one that ended an hour ago, looked identical). Re-running
+  // the whole render re-derives all of it from the current clock; each
+  // call schedules its own next tick via destroy() above.
+  countdownTimer = setInterval(() => render(container, { state, navigate }), 60000);
 
   delegate(container, 'click', '[data-action]', (event, target) => {
     const { action, subject } = target.dataset;
