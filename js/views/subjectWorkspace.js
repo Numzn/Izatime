@@ -1,5 +1,5 @@
 import {
-  todayKey, diffInDays, addDays, minutesFromHHMM, nowHHMM,
+  todayKey, diffInDays, addDays, minutesFromHHMM, nowHHMM, formatDueLabel,
 } from '../core/dates.js';
 import { mutate } from '../core/store.js';
 import {
@@ -645,7 +645,7 @@ function renderOverview(state, subject) {
   const lecturers = subjectLecturers(state, subject.id);
   const next = nextClassForSubject(state, subject.id, dateKey);
   const dueAssignments = getAssignmentsForSubject(state, subject.id)
-    .filter((a) => !isAssignmentDone(a) && diffInDays(dateKey, a.dueDate) >= -1)
+    .filter((a) => !isAssignmentDone(a))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 4);
   const upcomingAssessments = getAssessmentsForSubject(state, subject.id)
@@ -671,7 +671,7 @@ function renderOverview(state, subject) {
           return `<button class="due-row" data-open-assignment="${a.id}">
             <span class="due-chip due-chip-assignment">${ASSIGNMENT_STATUS_LABEL[a.status]}</span>
             <span class="due-title">${escapeHtml(a.title)}</span>
-            <span class="due-when">${daysLeft <= 0 ? 'Due today' : `${daysLeft}d`}</span>
+            <span class="due-when${daysLeft < 0 ? ' due-when-overdue' : ''}">${formatDueLabel(daysLeft)}</span>
           </button>`;
         }).join('')}
       </div>` : ''}

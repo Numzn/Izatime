@@ -1,8 +1,8 @@
 import {
-  todayKey, minutesFromHHMM, nowHHMM, diffInDays, formatDayLabel,
+  todayKey, minutesFromHHMM, nowHHMM, diffInDays, formatDayLabel, formatDueLabel,
 } from '../core/dates.js';
 import { getNextSession, getSessionsForDate } from '../services/scheduler.js';
-import { getAssignmentsDueWithin, getUpcomingAssessments } from '../services/assignments.js';
+import { getAssignmentsDueSoonOrOverdue, getUpcomingAssessments } from '../services/assignments.js';
 import { getNextFreePeriod } from '../services/freeTime.js';
 import { getRecommendations } from '../services/aiCoach.js';
 import { escapeHtml, delegate, clearDelegated } from '../components/dom.js';
@@ -55,7 +55,7 @@ export function render(container, { state, navigate }) {
     (entry) => !entry.completed && minutesFromHHMM(entry.session.startTime) > nowMinutes && entry.session.id !== next?.session.id,
   );
 
-  const dueAssignments = getAssignmentsDueWithin(state, 2, dateKey).map((a) => ({
+  const dueAssignments = getAssignmentsDueSoonOrOverdue(state, 2, dateKey).map((a) => ({
     kind: 'assignment', date: a.dueDate, title: a.title, subjectId: a.subjectId, id: a.id,
   }));
   const dueAssessments = getUpcomingAssessments(state, 7, dateKey).map((a) => ({
@@ -113,13 +113,13 @@ export function render(container, { state, navigate }) {
       <div class="due-list">
         ${dueSoon.map((item) => {
           const daysLeft = diffInDays(dateKey, item.date);
-          const dueLabel = daysLeft <= 0 ? 'Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft}d`;
+          const dueLabel = formatDueLabel(daysLeft);
           const typeLabel = item.kind === 'assignment' ? 'Assignment' : ASSESSMENT_LABEL[item.assessmentKind] || 'Assessment';
           return `
             <button class="due-row" data-action="open-subject" data-subject="${item.subjectId || ''}">
               <span class="due-chip due-chip-${item.kind}">${typeLabel}</span>
               <span class="due-title">${escapeHtml(item.title)}</span>
-              <span class="due-when">${dueLabel}</span>
+              <span class="due-when${daysLeft < 0 ? ' due-when-overdue' : ''}">${dueLabel}</span>
             </button>
           `;
         }).join('')}
