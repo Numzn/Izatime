@@ -35,6 +35,21 @@ export function getSessionsForDate(state, dateKey, { type } = {}) {
     ));
 }
 
+// The class happening right now, if any — distinct from getNextSession,
+// which only ever looks forward (startTime >= now) and so treats an
+// in-progress class as already gone the moment it starts, jumping
+// straight to whatever's after it instead of acknowledging what's
+// actually happening.
+export function getCurrentSession(state, dateKey, nowMinutes) {
+  const entries = getSessionsForDate(state, dateKey).filter((entry) => {
+    if (entry.completed) return false;
+    const start = minutesFromHHMM(entry.session.startTime);
+    const end = start + entry.session.durationMinutes;
+    return nowMinutes >= start && nowMinutes < end;
+  });
+  return entries[0] || null;
+}
+
 export function getNextSession(state, { fromDateKey, fromMinutes = -1 } = {}) {
   for (let offset = 0; offset < 14; offset += 1) {
     const dateKey = addDays(fromDateKey, offset);
