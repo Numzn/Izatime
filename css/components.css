@@ -260,6 +260,7 @@ h2 {
 .due-chip-assessment { background: var(--warning-soft); color: var(--warning); }
 .due-title { flex: 1; min-width: 0; font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .due-when { flex-shrink: 0; font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+.due-when-overdue { color: var(--danger); }
 
 /* ── ASSIGNMENT LIST (Subject Workspace) ─────────────────── */
 .assignment-list { display: flex; flex-direction: column; gap: 6px; }

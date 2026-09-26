@@ -104,3 +104,14 @@ export function formatMinutes(totalMinutes) {
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
+
+// Shared "when is this due" label for assignment/assessment due-rows
+// (Today, Subject Workspace Overview). A negative daysLeft is overdue —
+// distinct from "Due today" (daysLeft === 0), which it was previously
+// getting collapsed into via `daysLeft <= 0` checks at the call sites.
+export function formatDueLabel(daysLeft) {
+  if (daysLeft < 0) return `${-daysLeft}d overdue`;
+  if (daysLeft === 0) return 'Due today';
+  if (daysLeft === 1) return 'Tomorrow';
+  return `${daysLeft}d`;
+}

@@ -51,6 +51,19 @@ export function getAssignmentsDueWithin(state, days, referenceDateKey = todayKey
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 }
 
+// Same as getAssignmentsDueWithin but never drops overdue work off the
+// list — that one intentionally floors at daysLeft >= 0 for reminder-tier
+// purposes (see notifications.js's assignmentCandidates, which has its own
+// separate "dueday" tier and shouldn't start re-firing old due dates), but
+// a screen showing what's actually outstanding needs the opposite: an
+// an assignment that's still not submitted has to keep showing until
+// it's marked done, not vanish once its due date has passed.
+export function getAssignmentsDueSoonOrOverdue(state, days, referenceDateKey = todayKey()) {
+  return getOpenAssignments(state)
+    .filter((a) => diffInDays(referenceDateKey, a.dueDate) <= days)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+
 export function getMostUrgentAssignment(state, referenceDateKey = todayKey()) {
   const open = getOpenAssignments(state)
     .map((a) => ({ assignment: a, daysLeft: diffInDays(referenceDateKey, a.dueDate) }))
