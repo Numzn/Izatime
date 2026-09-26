@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; a push mid-deploy waits for the
+# current one rather than cancelling it, so a deploy never gets half-shipped.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No build step - this is a static, no-framework app (see package.json).
+      # Stage only the actual frontend into dist/ so server/ (backend source),
+      # the Dockerfile, and repo docs never end up publicly served from the
+      # Pages URL.
+      - name: Stage frontend files
+        run: |
+          mkdir -p dist
+          cp index.html manifest.json sw.js dist/
+          cp -r css js icons dist/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
