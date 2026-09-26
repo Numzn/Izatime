@@ -13,7 +13,9 @@ import {
 } from '../services/assignments.js';
 import { getSubjectPerformance } from '../services/analytics.js';
 import { generateQuiz } from '../services/aiCoach.js';
-import { escapeHtml, delegate, clear } from '../components/dom.js';
+import {
+  escapeHtml, delegate, clear, clearDelegated,
+} from '../components/dom.js';
 import { openSessionForm } from '../components/sessionForm.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
@@ -800,6 +802,7 @@ function renderHistory(state, subject) {
 }
 
 export function render(container, { state, params, navigate }) {
+  clearDelegated(container);
   if (params?.subjectId) { viewState.subjectId = params.subjectId; viewState.tab = 'overview'; }
   if (!state.subjects.some((s) => s.id === viewState.subjectId)) {
     viewState.subjectId = state.subjects[0]?.id || null;

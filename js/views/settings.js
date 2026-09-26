@@ -7,7 +7,7 @@ import { importTimetableICS } from '../services/icsImport.js';
 import { buildICS } from '../services/icsExport.js';
 import * as backendSync from '../services/backendSync.js';
 import * as pushSubscription from '../services/pushSubscription.js';
-import { delegate, escapeHtml } from '../components/dom.js';
+import { delegate, escapeHtml, clearDelegated } from '../components/dom.js';
 import { openModal, confirmModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { iconMarkup } from '../components/icons.js';
@@ -209,6 +209,7 @@ export function destroy() {
 
 export function render(container, { state, navigate }) {
   destroy();
+  clearDelegated(container);
   const { settings } = state;
 
   container.innerHTML = `

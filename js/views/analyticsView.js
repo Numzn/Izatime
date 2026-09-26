@@ -2,13 +2,14 @@ import { formatMinutes } from '../core/dates.js';
 import {
   getTrend, getCompletionRate, getSubjectPerformance, getWeakAreas,
 } from '../services/analytics.js';
-import { escapeHtml, delegate } from '../components/dom.js';
+import { escapeHtml, delegate, clearDelegated } from '../components/dom.js';
 import { barChart } from '../components/charts.js';
 import { iconMarkup } from '../components/icons.js';
 
 const viewState = { days: 7 };
 
 export function render(container, { state }) {
+  clearDelegated(container);
   const trend = getTrend(state, viewState.days);
   const totalMinutes = trend.reduce((sum, t) => sum + t.minutes, 0);
   const completion = getCompletionRate(state, viewState.days);
