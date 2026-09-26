@@ -1,4 +1,4 @@
-const CACHE_NAME = 'numzstudy-v4.12';
+const CACHE_NAME = 'numzstudy-v4.13';
 
 // Top-level route names the backend mounts in server/src/app.js. When the
 // all-in-one Docker image serves this page, those routes live on the same

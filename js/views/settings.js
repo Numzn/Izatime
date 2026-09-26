@@ -26,8 +26,10 @@ function showImportSummary(state, result, itemNoun) {
 
   const summary = document.createElement('p');
   summary.className = 'modal-message';
-  summary.textContent = `Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}`
-    + `${result.subjectsCreated ? `, created ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}.`;
+  summary.textContent = result.imported > 0
+    ? `Imported ${result.imported} class${result.imported === 1 ? '' : 'es'}`
+      + `${result.subjectsCreated ? `, created ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'}` : ''}.`
+    : `Added ${result.subjectsCreated} new subject${result.subjectsCreated === 1 ? '' : 's'} — no class times were in the file, so add each one's schedule from the timetable.`;
   body.appendChild(summary);
 
   if (result.skipped.length) {
@@ -287,7 +289,7 @@ export function render(container, { state, navigate }) {
         <button class="btn btn-ghost" data-action="csv-import">${iconMarkup('upload', { size: 15 })}Import timetable CSV</button>
       </div>
       <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none">
-      <p class="settings-note" style="margin-top:14px">Or add classes from another calendar app's export (.ics). Timed events are imported as classes — matched to an existing subject by name where possible, otherwise grouped under a subject called "Imported". Weekly-recurring events keep their recurrence; all-day events are skipped.</p>
+      <p class="settings-note" style="margin-top:14px">Or add classes from another calendar app's export (.ics). Timed events are imported as classes — matched to an existing subject by name where possible, otherwise grouped under a subject called "Imported". Weekly-recurring events keep their recurrence; all-day events (no time in the file, e.g. a course-enrollment export) add just the subject, ready for you to schedule.</p>
       <div class="settings-actions">
         <button class="btn btn-ghost" data-action="ics-import">${iconMarkup('upload', { size: 15 })}Import calendar (.ics)</button>
       </div>
@@ -508,7 +510,7 @@ export function render(container, { state, navigate }) {
       const text = await file.text();
       let result;
       mutate((s) => { result = importTimetableICS(s, text); });
-      if (result.imported > 0) {
+      if (result.imported > 0 || result.subjectsCreated > 0) {
         showImportSummary(state, result, 'event');
       } else {
         showToast('No classes found in that calendar file');
