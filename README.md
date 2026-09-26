@@ -372,6 +372,44 @@ own) still works exactly as described in the Backend section above; the
 one-image path is just the fastest way to get both running somewhere
 with a single command.
 
+### Docker Compose (NumzLab)
+
+`docker-compose.yml` is the deployment used on the NumzLab home server: the
+same one-image build, run by compose, with the bundled Postgres keeping its
+data in a named volume (`numzstudy_data`) and the session and push secrets in
+a git-ignored `.env`, so the volume holds only the database. Host ports bind
+to `127.0.0.1` and the Docker bridge address only, never `0.0.0.0`: on
+NumzLab the platform's reverse proxy reaches the container through the
+bridge, and Docker's own port publishing would otherwise bypass the host
+firewall.
+
+```bash
+# 1. Configuration. .env.example explains every variable, including how to
+#    generate the four session/push secrets and find NUMZSTUDY_GATEWAY_BIND_IP.
+cp .env.example .env && chmod 600 .env   # then fill it in
+
+# 2. Build and start.
+docker compose up -d --build
+docker compose ps   # "healthy" once /health answers, i.e. the database is reachable
+```
+
+Backups need two things: a dump of the database, and a copy of `.env` (lose
+the secrets and everyone is signed out and every push subscription is
+invalidated).
+
+```bash
+docker exec numzstudy pg_dump -Fc -U postgres numzstudy > numzstudy.dump
+# restore into the running app's database:
+docker exec -i numzstudy pg_restore -U postgres -d numzstudy --clean --if-exists < numzstudy.dump
+```
+
+To use a shared Postgres instead of the bundled one, add `DATABASE_URL` to
+the service's environment; the entrypoint then skips its own. Making the app
+public (reverse-proxy route, DNS, TLS) is platform configuration that lives
+with the platform, not in this repo. Two things to know when you do: Web Push
+and Google sign-in both need HTTPS, and the public URL must be listed under
+"Authorized JavaScript origins" for the Client ID in Google Cloud Console.
+
 ---
 
 ## 🔧 Troubleshooting
