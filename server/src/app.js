@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from './env.js';
+import { prisma } from './lib/prisma.js';
 import authRoutes from './routes/auth.js';
 import syncRoutes from './routes/sync.js';
 import pushRoutes from './routes/push.js';
@@ -60,7 +61,18 @@ export function createApp() {
   app.use('/sync', syncRoutes);
   app.use('/push', pushRoutes);
 
-  app.get('/health', (req, res) => res.json({ ok: true }));
+  // Reports on the database too, not just the process: an orchestrator or
+  // monitor polling this should see "down" when every real request would fail
+  // because Postgres is unreachable, instead of a healthy-looking server.
+  app.get('/health', async (req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.json({ ok: true });
+    } catch (error) {
+      console.error('Health check: database unreachable:', error.message);
+      res.status(503).json({ ok: false, error: 'Database unreachable.' });
+    }
+  });
 
   if (servesFrontend) {
     app.get('/', (req, res) => res.type('html').send(renderIndexHtml()));
