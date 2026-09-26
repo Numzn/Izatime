@@ -128,11 +128,13 @@ export function importTimetableICS(state, icsText) {
   events.forEach((event, index) => {
     const label = event.summary || `Event ${index + 1}`;
 
-    // Matches both suffixes: @numzstudy is what icsExport.js writes now,
-    // @digital-timetable is what it wrote before the app was renamed —
-    // still checked so a .ics exported before the rename doesn't come
-    // back in as duplicate classes on re-import.
-    if (event.uid && (event.uid.includes('@numzstudy') || event.uid.includes('@digital-timetable'))) {
+    // Matches the exact shape icsExport.js writes: "session-<id>@numzstudy",
+    // "assessment-<id>@numzstudy", "assignment-<id>@numzstudy" (plus the
+    // pre-rename "@digital-timetable" suffix). A plain substring/suffix check
+    // on "@numzstudy" alone is too loose — an external calendar's own UID
+    // domain can coincidentally end the same way (this app's own name isn't
+    // a reserved word), which would silently reject a real import outright.
+    if (event.uid && /^(session|assessment|assignment)-.+@(numzstudy|digital-timetable)$/.test(event.uid)) {
       ctx.result.skipped.push(`"${label}": already in this app (its own export), skipped`);
       return;
     }
@@ -145,7 +147,13 @@ export function importTimetableICS(state, icsText) {
       return;
     }
     if (event.dtstart.allDay) {
-      ctx.result.skipped.push(`"${label}": all-day events aren't imported as classes`);
+      // No time/day to build a class from (e.g. a course-enrollment export
+      // that just lists "you're enrolled in X" once, with no room/time/day
+      // of its own) — add the subject, matched or created by exact name, so
+      // it exists ready to schedule instead of the course being dropped
+      // entirely. No session is created since there's nothing to put on the
+      // timetable yet.
+      resolveSubject(state, { subjectHint: event.summary }, ctx);
       return;
     }
 
