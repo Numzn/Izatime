@@ -7,6 +7,21 @@
 # that's the one path worth mounting a volume at.
 set -euo pipefail
 
+# Whatever ends this script — a normal exit, an error, or `docker stop` — stops
+# the bundled Postgres cleanly if this script started it. A container's PID 1
+# gets no default signal handling, so without the traps below `docker stop`
+# waits out its 10 s grace period and then SIGKILLs everything, including
+# Postgres mid-write, which then has to crash-recover on the next start.
+local_pg=0
+stop_local_postgres() {
+  if [ "$local_pg" = 1 ]; then
+    echo "Stopping local Postgres..."
+    su postgres -c "pg_ctl -D '$PGDATA' -m fast -w stop" || true
+  fi
+}
+trap stop_local_postgres EXIT
+trap 'exit 143' TERM INT
+
 if [ -z "${GOOGLE_CLIENT_ID:-}" ]; then
   echo "GOOGLE_CLIENT_ID is not set — pass it with -e GOOGLE_CLIENT_ID=... (see README)." >&2
   exit 1
@@ -29,6 +44,7 @@ if [ -z "${DATABASE_URL:-}" ]; then
 
   echo "Starting local Postgres..."
   su postgres -c "pg_ctl -D '$PGDATA' -l /data/postgres.log -o '-c listen_addresses=localhost -p 5432' start"
+  local_pg=1
 
   for _ in $(seq 1 30); do
     if su postgres -c "pg_isready -q"; then break; fi
@@ -76,4 +92,19 @@ echo "Applying database migrations..."
 npx prisma migrate deploy
 
 echo "Starting NumzStudy..."
-exec node src/index.js
+# Node runs as a child rather than being exec'd, so this shell stays in charge
+# of shutdown: it forwards SIGTERM/SIGINT to Node, waits for it to finish, and
+# the EXIT trap above then stops the bundled Postgres. (Exec'd, Node would be
+# PID 1 and ignore SIGTERM.)
+node src/index.js &
+node_pid=$!
+trap 'kill -TERM "$node_pid" 2>/dev/null || true' TERM INT
+
+# `wait` returns early (status > 128) when a trapped signal arrives, while Node
+# is still shutting down, so keep waiting until it has really exited.
+status=0
+wait "$node_pid" || status=$?
+while kill -0 "$node_pid" 2>/dev/null; do
+  wait "$node_pid" || status=$?
+done
+exit "$status"
