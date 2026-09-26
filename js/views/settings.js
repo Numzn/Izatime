@@ -173,6 +173,7 @@ function accountSyncSection(state) {
       </div>
       <div class="settings-actions">
         <button class="btn btn-primary" data-action="resume-sync">Resume sync</button>
+        <button class="btn btn-ghost" data-action="sign-out">Sign out</button>
       </div>`;
   } else {
     statusBlock = `
