@@ -1,5 +1,7 @@
 import { minutesFromHHMM } from '../core/dates.js';
-import { resolveSubject, createSessionFromRow, newImportContext } from './timetableImport.js';
+import {
+  resolveSubject, createSessionFromRow, findExistingSession, newImportContext,
+} from './timetableImport.js';
 
 const RRULE_DAY_TO_CODE = {
   MO: 'MON', TU: 'TUE', WE: 'WED', TH: 'THU', FR: 'FRI', SA: 'SAT', SU: 'SUN',
@@ -153,7 +155,7 @@ export function importTimetableICS(state, icsText) {
       ctx,
     );
 
-    state.sessions.push(createSessionFromRow(subject, {
+    const newRow = {
       title: event.summary,
       date: event.dtstart.date,
       startTime: event.dtstart.time,
@@ -161,7 +163,17 @@ export function importTimetableICS(state, icsText) {
       room: event.location || '',
       lecturer: event.lecturer || '',
       recurrence: parseRRule(event.rrule),
-    }, state));
+    };
+
+    // Catches re-importing the same external calendar file a second time
+    // (the UID check above only catches this app's own prior exports
+    // coming back in, not a source calendar re-exported and re-imported).
+    if (findExistingSession(state, subject, newRow)) {
+      ctx.result.skipped.push(`"${label}": already imported, skipped`);
+      return;
+    }
+
+    state.sessions.push(createSessionFromRow(subject, newRow, state));
     ctx.result.imported += 1;
   });
 

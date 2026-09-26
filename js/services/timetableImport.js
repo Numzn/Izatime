@@ -39,6 +39,25 @@ export function resolveSubject(state, { subjectHint, titleForFallbackMatch, fall
   return ctx.fallbackSubject;
 }
 
+// Re-importing the same file (the same CSV re-uploaded after tweaking one
+// row, or the same .ics re-exported from another calendar app) shouldn't
+// double up every class that was already imported. A row/event counts as
+// "already imported" when an existing session for the same subject has
+// the same title, start time, and the same shape of recurrence (same
+// weekdays if recurring, same one-off date if not) — matches on what the
+// row actually describes, not on the session's own id or createdAt, which
+// obviously differ between two separate imports of "the same" class.
+export function findExistingSession(state, subject, row) {
+  return state.sessions.find((s) => {
+    if (s.subjectId !== subject.id || s.title !== row.title || s.startTime !== row.startTime) return false;
+    if (row.recurrence) {
+      return !!s.recurrence && s.recurrence.days.length === row.recurrence.days.length
+        && s.recurrence.days.every((d) => row.recurrence.days.includes(d));
+    }
+    return !s.recurrence && s.date === row.date;
+  });
+}
+
 // The one place a session gets built from an imported row, so a field
 // either adapter forgets to pass through can't quietly differ between them.
 // A weekly recurrence with no explicit end date defaults to the term's end

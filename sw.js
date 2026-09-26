@@ -1,10 +1,9 @@
-const CACHE_NAME = 'numzstudy-v4.2';
+const CACHE_NAME = 'numzstudy-v4.7';
 
 // Top-level route names the backend mounts in server/src/app.js. When the
 // all-in-one Docker image serves this page, those routes live on the same
 // origin as the app shell, so the fetch handler below has to leave them alone.
 const BACKEND_ROUTES = new Set(['auth', 'sync', 'push', 'health']);
-
 const ASSETS = [
   './',
   './index.html',

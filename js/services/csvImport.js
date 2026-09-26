@@ -1,5 +1,7 @@
-import { todayKey } from '../core/dates.js';
-import { resolveSubject, createSessionFromRow, newImportContext } from './timetableImport.js';
+import { todayKey, mondayOf } from '../core/dates.js';
+import {
+  resolveSubject, createSessionFromRow, findExistingSession, newImportContext,
+} from './timetableImport.js';
 
 export const CSV_TEMPLATE_HEADER = 'subject,title,day,startTime,durationMinutes,lecturer,type,priority';
 
@@ -81,16 +83,29 @@ export function importTimetableCSV(state, csvText) {
     const durationMinutes = Number(row.durationminutes) > 0 ? Number(row.durationminutes) : 60;
     const priority = [1, 2, 3].includes(Number(row.priority)) ? Number(row.priority) : 2;
 
-    state.sessions.push(createSessionFromRow(subject, {
+    const newRow = {
       title: row.title,
       type,
-      date: todayKey(),
+      // Anchored to the Monday of the current week, not "today" — a
+      // recurring session never occurs before its own anchor date (see
+      // scheduler.js's occursOn), so anchoring to today would silently
+      // hide this row's class for the rest of the *current* week if
+      // today falls after its weekday (e.g. importing a MON row on a
+      // Thursday would hide that Monday's class until the week after).
+      date: mondayOf(todayKey()),
       startTime,
       durationMinutes,
       priority,
       recurrence: { days: [day], until: null },
       lecturer: row.lecturer || '',
-    }, state));
+    };
+
+    if (findExistingSession(state, subject, newRow)) {
+      ctx.result.skipped.push(`Row ${rowNumber}: "${row.title}" already imported, skipped`);
+      return;
+    }
+
+    state.sessions.push(createSessionFromRow(subject, newRow, state));
     ctx.result.imported += 1;
   });
 
