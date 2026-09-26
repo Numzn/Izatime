@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Boots the all-in-one NumzStudy image: a local Postgres cluster (unless
 # DATABASE_URL already points somewhere else), persistent JWT/VAPID
-# secrets, migrations, then the Node server — which also serves the
-# frontend (see server/src/app.js). Data that needs to survive a container
-# restart or recreate lives under /data, so that's the one path worth
-# mounting a volume at.
+# secrets (unless the environment supplies them), migrations, then the Node
+# server — which also serves the frontend (see server/src/app.js). Data that
+# needs to survive a container restart or recreate lives under /data, so
+# that's the one path worth mounting a volume at.
 set -euo pipefail
 
 if [ -z "${GOOGLE_CLIENT_ID:-}" ]; then
@@ -45,13 +45,31 @@ else
   echo "DATABASE_URL is set — using that instead of the bundled local Postgres."
 fi
 
-SECRETS_FILE=/data/secrets.env
-if [ ! -f "$SECRETS_FILE" ]; then
-  echo "First boot: generating persistent JWT/VAPID secrets into $SECRETS_FILE..."
-  node /app/server/scripts/generateSecrets.js > "$SECRETS_FILE"
+# The JWT/VAPID secrets come from the environment when an orchestrator or a
+# compose .env supplies them, in which case nothing needs persisting here.
+# With none supplied they are generated once into /data/secrets.env and reused
+# from there. All four or none: sourcing the file would otherwise silently
+# overwrite whichever ones were supplied.
+SECRET_VARS=(JWT_ACCESS_SECRET JWT_REFRESH_SECRET VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY)
+supplied=0
+for name in "${SECRET_VARS[@]}"; do
+  if [ -n "${!name:-}" ]; then supplied=$((supplied + 1)); fi
+done
+
+if [ "$supplied" -eq "${#SECRET_VARS[@]}" ]; then
+  echo "Using JWT/VAPID secrets from the environment."
+elif [ "$supplied" -eq 0 ]; then
+  SECRETS_FILE=/data/secrets.env
+  if [ ! -f "$SECRETS_FILE" ]; then
+    echo "First boot: generating persistent JWT/VAPID secrets into $SECRETS_FILE..."
+    node /app/server/scripts/generateSecrets.js > "$SECRETS_FILE"
+  fi
+  # shellcheck disable=SC1090
+  set -a; source "$SECRETS_FILE"; set +a
+else
+  echo "Set all of ${SECRET_VARS[*]} or none of them (none: generated into /data/secrets.env)." >&2
+  exit 1
 fi
-# shellcheck disable=SC1090
-set -a; source "$SECRETS_FILE"; set +a
 
 cd /app/server
 echo "Applying database migrations..."
